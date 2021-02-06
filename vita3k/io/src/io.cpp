@@ -71,6 +71,10 @@ bool read_app_file(FileBuffer &buf, const std::string &pref_path, const std::str
     return read_file(VitaIoDevice::ux0, buf, pref_path, fs::path("app") / title_id / vfs_file_path);
 }
 
+bool read_patch_file(FileBuffer &buf, const std::string &pref_path, const std::string &title_id, const fs::path &vfs_file_path) {
+    return read_file(VitaIoDevice::ux0, buf, pref_path, fs::path("patch") / title_id / vfs_file_path);
+}
+
 SpaceInfo get_space_info(const VitaIoDevice device, const std::string &vfs_path, const std::string &pref_path) {
     SpaceInfo space_info;
     const auto host_path = device::construct_emulated_path(device, vfs_path, pref_path);
@@ -128,6 +132,7 @@ void init_device_paths(IOState &io) {
     io.device_paths.savedata0 = "user/" + io.user_id + "/savedata/" + io.title_id;
     io.device_paths.app0 = "app/" + io.title_id;
     io.device_paths.addcont0 = "addcont/" + io.title_id;
+    io.device_paths.patch0 = "path/" + io.title_id;
 }
 
 bool init_savedata_game_path(IOState &io, const fs::path &pref_path) {

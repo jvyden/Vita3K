@@ -99,6 +99,7 @@ typedef std::map<SceUID, DirStats> DirEntries;
 struct IOState {
     struct DevicePaths {
         std::string app0;
+        std::string patch0;
         std::string savedata0;
         std::string addcont0;
     } device_paths;

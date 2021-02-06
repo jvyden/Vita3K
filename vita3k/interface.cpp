@@ -215,14 +215,17 @@ static auto pre_load_module(HostState &host, const std::vector<std::string> &lib
         vfs::FileBuffer module_buffer;
         Ptr<const void> lib_entry_point;
         bool res;
+        const auto MODULE_PATH_ABS = fmt::format("{}:{}", device._to_string(), module_path);
 
         if (device == VitaIoDevice::app0)
             res = vfs::read_app_file(module_buffer, host.pref_path, host.io.title_id, module_path);
+        else if (device == VitaIoDevice::patch0)
+            res = vfs::read_patch_file(module_buffer, host.pref_path, host.io.title_id, module_path);        
         else
             res = vfs::read_file(device, module_buffer, host.pref_path, module_path);
 
         if (res) {
-            SceUID module_id = load_self(lib_entry_point, host.kernel, host.mem, module_buffer.data(), device._to_string() + module_path, host.cfg);
+            SceUID module_id = load_self(lib_entry_point, host.kernel, host.mem, module_buffer.data(), MODULE_PATH_ABS, host.cfg);
             if (module_id >= 0) {
                 const auto module = host.kernel.loaded_modules[module_id];
 
@@ -299,7 +302,7 @@ static ExitCode load_app_impl(Ptr<const void> &entry_point, HostState &host, Gui
     host.renderer->features.hardware_flip = host.cfg.hardware_flip;
 
     // Load pre-loaded libraries
-    const auto module_app_path{ fs::path(host.pref_path) / "ux0/app" / host.io.title_id / "sce_module" };
+    const auto module_app_path{ fs::path(host.pref_path) / "ux0/patch" / host.io.title_id / "sce_module" };
     if (fs::exists(module_app_path) && !fs::is_empty(module_app_path)) {
         // Load application module
         const std::vector<std::string> lib_load_list = {
@@ -308,7 +311,7 @@ static ExitCode load_app_impl(Ptr<const void> &entry_point, HostState &host, Gui
             "sce_module/libult.suprx",
         };
 
-        pre_load_module(host, lib_load_list, VitaIoDevice::app0);
+        pre_load_module(host, lib_load_list, VitaIoDevice::patch0);
     } else {
         // Load Firmware module
         const std::vector<std::string> lib_load_list = {
@@ -322,7 +325,7 @@ static ExitCode load_app_impl(Ptr<const void> &entry_point, HostState &host, Gui
 
     // Load main executable (eboot.bin)
     vfs::FileBuffer eboot_buffer;
-    if (vfs::read_app_file(eboot_buffer, host.pref_path, host.io.title_id, EBOOT_PATH)) {
+    if (vfs::read_patch_file(eboot_buffer, host.pref_path, host.io.title_id, EBOOT_PATH)) {
         SceUID module_id = load_self(entry_point, host.kernel, host.mem, eboot_buffer.data(), EBOOT_PATH_ABS, host.cfg);
         if (module_id >= 0) {
             const auto module = host.kernel.loaded_modules[module_id];
