@@ -17,19 +17,31 @@
 
 #include "SceFios2User.h"
 
-EXPORT(int, sceFiosOverlayAddForProcess02) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceFiosOverlayAddForProcess02, SceUID pid, SceFiosOverlay *overlay, SceFiosOverlayID *outID) {
+    LOG_DEBUG("pid: {}", pid);
+    LOG_DEBUG("dst: {}", overlay->dst);
+    LOG_DEBUG("dst len: {}", overlay->dst_len);
+    LOG_DEBUG("id: {}", overlay->id);
+    LOG_DEBUG("order: {}", overlay->order);
+    LOG_DEBUG("pid: {}", overlay->pid);
+    LOG_DEBUG("src: {}", overlay->src);
+    LOG_DEBUG("src_len: {}", overlay->src_len);
+    LOG_DEBUG("type: {}", overlay->type);
+    LOG_DEBUG("outID: {}", *outID);
+    return 0;
 }
 
 EXPORT(int, sceFiosOverlayGetInfoForProcess02) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceFiosOverlayGetList02) {
+EXPORT(int, sceFiosOverlayGetList02, SceFiosOverlayID *pOutIDs, size_t maxIDs, size_t *pActualIDs) {
+    LOG_DEBUG("maxIDs: {}", maxIDs);
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceFiosOverlayGetRecommendedScheduler02) {
+EXPORT(int, sceFiosOverlayGetRecommendedScheduler02, SceUID pid, const char *path, const char *pInPath, char *pOutPath) {
+    //LOG_DEBUG("pid: {}, path: {}, pInPath: {}", pid, path, pInPath);
     return UNIMPLEMENTED();
 }
 
@@ -45,8 +57,11 @@ EXPORT(int, sceFiosOverlayResolveSync02) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceFiosOverlayResolveWithRangeSync02) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceFiosOverlayResolveWithRangeSync02, SceUID pid, int resolveFlag, const char *pInPath, char *pOutPath, size_t maxPath) {
+    STUBBED("Using strncpy");
+    strncpy(pOutPath, pInPath, maxPath);
+
+    return 0;
 }
 
 EXPORT(int, sceFiosOverlayThreadIsDisabled02) {

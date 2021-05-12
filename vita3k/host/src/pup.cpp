@@ -227,6 +227,7 @@ static void decrypt_pup_packages(const std::wstring &src, const std::wstring &de
     }
 
     join_files(dest, "os0-", dest + L"/os0.img");
+    join_files(dest, "pd0-", dest + L"/pd0.img");
     join_files(dest, "vs0-", dest + L"/vs0.img");
     join_files(dest, "sa0-", dest + L"/sa0.img");
 }
@@ -264,6 +265,24 @@ void install_pup(const std::wstring &pref_path, const std::string &pup_path, con
                 const auto extension = file.path().filename().extension();
                 const auto is_self = ((extension == ".suprx") || (extension == ".skprx") || (extension == ".self"));
                 if (is_self) {
+                    self2elf(filePathString, filePathString + "elf", SCE_KEYS, 0);
+                    fs::rename(filePathString + "elf", filePathString);
+                    make_fself(filePathString, filePathString + "fself");
+                    fs::rename(filePathString + "fself", filePathString);
+                }
+            }
+        }
+    }
+    if (fs::file_size(pup_dec + L"/pd0.img") > 0) {
+        LOG_DEBUG("Extract fat");
+        extract_fat(pup_dec, "pd0.img", pref_path);
+        for (const auto &file : fs::recursive_directory_iterator(pref_path + L"/pd0")) {
+            if (fs::is_regular_file(file.path())) {
+                const auto filePathString = file.path().string();
+                LOG_DEBUG("file: {}", file.path().string());
+                const auto extension = file.path().filename().extension();
+                const auto is_self = ((extension == ".suprx") || (extension == ".skprx") || (extension == ".self"));
+                if ((file.path().filename() == "eboot.bin") || is_self) {
                     self2elf(filePathString, filePathString + "elf", SCE_KEYS, 0);
                     fs::rename(filePathString + "elf", filePathString);
                     make_fself(filePathString, filePathString + "fself");

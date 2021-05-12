@@ -27,6 +27,7 @@
 #include <memory>
 #include <mutex>
 
+#define SCE_GXM_COMMAND_LIST_WORD_COUNT 8U
 #define SCE_GXM_DEFAULT_UNIFORM_BUFFER_CONTAINER_INDEX 0xE
 #define SCE_GXM_GPU_CORE_COUNT 4U
 #define SCE_GXM_MAX_VERTEX_STREAMS 16
@@ -1342,6 +1343,9 @@ struct GxmContextState {
     // Fragment Program Mode
     SceGxmFragmentProgramMode front_side_fragment_program_mode = SCE_GXM_FRAGMENT_PROGRAM_ENABLED;
     SceGxmFragmentProgramMode back_side_fragment_program_mode = SCE_GXM_FRAGMENT_PROGRAM_ENABLED;
+
+    SceGxmVisibilityTestMode front_visibity_test_mode = SCE_GXM_VISIBILITY_TEST_ENABLED;
+    SceGxmVisibilityTestMode back_visibity_test_mode = SCE_GXM_VISIBILITY_TEST_ENABLED;
 
     // Line Width
     unsigned int front_point_line_width = 1;

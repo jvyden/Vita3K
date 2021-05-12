@@ -164,7 +164,8 @@ bool find_case_isens_path(IOState &io, VitaIoDevice &device, const fs::path &tra
         final_path = system_path.string().substr(0, system_path.string().find(app_id)) + app_id;
         break;
     }
-    case +VitaIoDevice::addcont0: {
+    case +VitaIoDevice::addcont0:
+    case +VitaIoDevice::addcont1: {
         std::string addcont_id = translated_path.string().substr(0, 18);
         final_path = system_path.string().substr(0, system_path.string().find(addcont_id)) + addcont_id;
         break;
@@ -212,7 +213,8 @@ std::string translate_path(const char *path, VitaIoDevice &device, const IOState
         device = VitaIoDevice::ux0;
         break;
     }
-    case +VitaIoDevice::addcont0: { // Redirect addcont0: to ux0:addcont/<title_id>
+    case +VitaIoDevice::addcont0: // Redirect addcont0: to ux0:addcont/<title_id>
+    case +VitaIoDevice::addcont1: { // Redirect addcont1: to ux0:addcont/<title_id>
         relative_path = device::remove_device_from_path(relative_path, device, device_paths.addcont0);
         device = VitaIoDevice::ux0;
         break;
@@ -237,7 +239,8 @@ std::string translate_path(const char *path, VitaIoDevice &device, const IOState
         break;
     }
     case +VitaIoDevice::tty0:
-    case +VitaIoDevice::tty1: {
+    case +VitaIoDevice::tty1:
+    case +VitaIoDevice::tty2: {
         return std::string{};
     }
     default: {
@@ -271,7 +274,7 @@ SceUID open_file(IOState &io, const char *path, const int flags, const std::wstr
         return IO_ERROR(SCE_ERROR_ERRNO_ENOENT);
     }
 
-    if (device == VitaIoDevice::tty0 || device == VitaIoDevice::tty1) {
+    if (device == VitaIoDevice::tty0 || device == VitaIoDevice::tty1 || device == VitaIoDevice::tty2) {
         assert(flags >= 0);
 
         auto tty_type = TTY_UNKNOWN;

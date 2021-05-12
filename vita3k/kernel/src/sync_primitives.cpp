@@ -407,7 +407,7 @@ SceUID semaphore_create(KernelState &kernel, const char *export_name, const char
 }
 
 SceInt32 semaphore_wait(KernelState &kernel, const char *export_name, SceUID thread_id, SceUID semaId, SceInt32 needCount, SceUInt32 *pTimeout) {
-    assert(semaid >= 0);
+    assert(semaId >= 0);
 
     // TODO Don't lock twice.
     const SemaphorePtr semaphore = lock_and_find(semaId, kernel.semaphores, kernel.mutex);
@@ -934,15 +934,15 @@ int msgpipe_recv(KernelState &kernel, const char *export_name, SceUID thread_id,
     }
 
     if (LOG_SYNC_PRIMITIVES) {
-        #ifdef WIN32
-        LOG_DEBUG("{}: uid: {} thread_id: {} name: \"{}\" attr: {} wait_mode: {:#b}", 
+#ifdef WIN32
+        LOG_DEBUG("{}: uid: {} thread_id: {} name: \"{}\" attr: {} wait_mode: {:#b}",
             export_name, msgpipe->uid, thread_id, msgpipe->name, msgpipe->attr, wait_mode);
-        #else
+#else
         LOG_DEBUG("{}: uid: {} thread_id: {} name: \"{}\" attr: {} wait_mode: {:#b}"
                   " waiting_threads: {}",
             export_name, msgpipe->uid, thread_id, msgpipe->name, msgpipe->attr, wait_mode,
             msgpipe->reciever_threads->size());
-        #endif
+#endif
     }
 
 #ifdef WIN32
@@ -1048,15 +1048,15 @@ int msgpipe_send(KernelState &kernel, const char *export_name, SceUID thread_id,
     }
 
     if (LOG_SYNC_PRIMITIVES) {
-        #ifdef WIN32
+#ifdef WIN32
         LOG_DEBUG("{}: uid: {} thread_id: {} name: \"{}\" attr: {} wait_mode: {:#b}",
             export_name, msgpipe->uid, thread_id, msgpipe->name, msgpipe->attr, wait_mode);
-        #else
+#else
         LOG_DEBUG("{}: uid: {} thread_id: {} name: \"{}\" attr: {} wait_mode: {:#b}"
                   " waiting_threads: {}",
             export_name, msgpipe->uid, thread_id, msgpipe->name, msgpipe->attr, wait_mode,
             msgpipe->reciever_threads->size());
-        #endif
+#endif
     }
 
 #ifdef WIN32

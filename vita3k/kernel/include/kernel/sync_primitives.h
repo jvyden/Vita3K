@@ -19,8 +19,8 @@
 
 #ifdef WIN32
 #ifndef WIN32_LEAN_AND_MEAN
-    #define WIN32_LEAN_AND_MEAN 1
-    #include <Windows.h>
+#define WIN32_LEAN_AND_MEAN 1
+#include <Windows.h>
 #endif
 #endif
 

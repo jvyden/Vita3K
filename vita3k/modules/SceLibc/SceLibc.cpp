@@ -898,8 +898,24 @@ EXPORT(int, setvbuf, FILE *stream, char *buffer, int mode, size_t size) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, snprintf) {
-    return UNIMPLEMENTED();
+EXPORT(int, snprintf, char *dst, unsigned int max, const char *fmt, module::vargs args) {
+    std::vector<char> buffer(1024);
+
+    const ThreadStatePtr thread = lock_and_find(thread_id, host.kernel.threads, host.kernel.mutex);
+
+    if (!thread) {
+        return SCE_KERNEL_ERROR_UNKNOWN_THREAD_ID;
+    }
+
+    const int result = utils::snprintf(buffer.data(), buffer.size(), fmt, *(thread->cpu), host.mem, args);
+
+    if (!result) {
+        return SCE_KERNEL_ERROR_INVALID_ARGUMENT;
+    }
+    dst = buffer.data();
+    LOG_INFO("{}, {}", buffer.data(), max);
+
+    return SCE_KERNEL_OK;
 }
 
 EXPORT(int, snprintf_s) {

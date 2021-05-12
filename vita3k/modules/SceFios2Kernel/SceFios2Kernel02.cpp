@@ -29,7 +29,9 @@ EXPORT(int, sceFiosKernelOverlayGetList02) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceFiosKernelOverlayGetRecommendedScheduler02) {
+EXPORT(int, sceFiosKernelOverlayGetRecommendedScheduler02, int flag, const char *pInPath) {
+    //LOG_DEBUG("flag: {}, pInPath: {}", flag, pInPath);
+    //LOG_DEBUG("pOutPath: {}", opt->pOutPath);
     return UNIMPLEMENTED();
 }
 

@@ -75,8 +75,10 @@ public:
     template <typename T>
     void erase() {
         auto it = objs.find(TypeInfo::registered<T>::index);
-        if (it == objs.end())
+        if (it == objs.end()) {
+            LOG_ERROR("Object not created but erased in storage. type:{}", typeid(T).name());
             return;
+        }
         objs.erase(it);
     }
 

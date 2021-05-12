@@ -16,6 +16,7 @@
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
 #include <ngs/modules/atrac9.h>
+#include <ngs/modules/player.h>
 #include <ngs/system.h>
 #include <util/log.h>
 
@@ -45,6 +46,15 @@ struct SceNgsVoiceInfo {
     SceUInt32 num_outputs;
     SceUInt32 num_patches_per_output;
     SceUInt32 update_passed;
+};
+
+struct SceNgsVoicePreset {
+    SceInt32 name_offset;
+    SceUInt32 name_length;
+    SceInt32 preset_data_offset;
+    SceUInt32 size_preset_data;
+    SceInt32 bypass_flags_offset;
+    SceUInt32 num_bypass_blags;
 };
 
 static_assert(sizeof(SceNgsPatchAudioPropInfo) == 24);
@@ -91,7 +101,14 @@ EXPORT(int, sceNgsModuleGetNumPresets) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceNgsModuleGetPreset) {
+EXPORT(SceInt32, sceNgsModuleGetPreset, SceNgsSynthSystemHandle sys_handle, const SceUInt32 uModuleID,
+    const SceUInt32 uPresetIndex, ngs::BufferParamsInfo *pParamsBuffer) {
+    LOG_DEBUG("module id: {}, preset index: {}", log_hex(uModuleID), uPresetIndex);
+    ngs::System *system = sys_handle.get(host.mem);
+
+    if (!system)
+        return RET_ERROR(SCE_NGS_ERROR_INVALID_ARG);
+
     return UNIMPLEMENTED();
 }
 
@@ -257,7 +274,9 @@ EXPORT(int, sceNgsSystemRelease) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceNgsSystemSetFlags) {
+EXPORT(SceInt32, sceNgsSystemSetFlags, SceNgsSynthSystemHandle *handle, const SceUInt32 flags) {
+    //LOG_DEBUG("flags: {}", flags);
+    //ngs::System *system = handle->get(host.mem);
     return UNIMPLEMENTED();
 }
 
@@ -280,7 +299,12 @@ EXPORT(SceUInt32, sceNgsSystemUpdate, SceNgsSynthSystemHandle handle) {
     return SCE_NGS_OK;
 }
 
-EXPORT(int, sceNgsVoiceBypassModule) {
+EXPORT(SceInt32, sceNgsVoiceBypassModule, SceNgsVoiceHandle voice_handle,
+    const SceUInt32 module_id, const SceUInt32 bypass_flag) {
+    //LOG_DEBUG("module id: {}, bypass flag: {}", module_id, bypass_flag);
+    //ngs::Voice *voice = voice_handle.get(host.mem);
+    //ngs::ModuleData *storage = voice->module_storage(module_id);
+
     return UNIMPLEMENTED();
 }
 
@@ -536,8 +560,19 @@ EXPORT(SceInt32, sceNgsVoiceGetStateData, SceNgsVoiceHandle voice_handle, const 
     return SCE_NGS_OK;
 }
 
-EXPORT(int, sceNgsVoiceInit) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceNgsVoiceInit, SceNgsVoiceHandle voice_handle, const SceNgsVoicePreset *pPreset, const SceUInt32 uInitFlags) {
+    if (host.cfg.disable_ngs) {
+        return 0;
+    }
+
+    ngs::Voice *voice = voice_handle.get(host.mem);
+
+    if (!voice)
+        return RET_ERROR(SCE_NGS_ERROR_INVALID_ARG);
+
+    LOG_DEBUG_IF(pPreset, "bypass: {}, name: {}", pPreset->bypass_flags_offset, pPreset->name_length);
+    LOG_DEBUG("flags: {}", uInitFlags);
+    return SCE_NGS_OK;
 }
 
 EXPORT(SceInt32, sceNgsVoiceKeyOff, SceNgsVoiceHandle voice_handle) {
@@ -607,7 +642,7 @@ EXPORT(SceInt32, sceNgsVoicePatchSetVolume, SceNgsPatchHandle patch_handle, cons
     ngs::Patch *patch = patch_handle.get(host.mem);
     if (!patch || patch->output_sub_index == -1)
         return RET_ERROR(SCE_NGS_ERROR_INVALID_ARG);
-
+    LOG_DEBUG("out chanel: {}, in chanel: {}, vol: {}", output_channel, input_channel, vol);
     patch->volume_matrix[output_channel][input_channel] = vol;
 
     return SCE_NGS_OK;
@@ -621,8 +656,10 @@ EXPORT(SceInt32, sceNgsVoicePatchSetVolumes, SceNgsPatchHandle patch_handle, con
     if (!patch || patch->output_sub_index == -1)
         return RET_ERROR(SCE_NGS_ERROR_INVALID_ARG);
 
-    for (int i = 0; i < std::min(vols, 2); i++)
-        patch->volume_matrix[output_channel][i] = volumes[i];
+    //for (int i = 0; i < std::min(vols, 2); i++)
+    //     patch->volume_matrix[output_channel][i] = volumes[i];
+
+    LOG_DEBUG("End, out chanel: {}, (volumes, 0: {}, 1: {}), vols: {}", output_channel, volumes[0], volumes[1], vols);
 
     return SCE_NGS_OK;
 }
@@ -667,7 +704,7 @@ EXPORT(SceUInt32, sceNgsVoicePlay, SceNgsVoiceHandle handle) {
     }
 
     ngs::Voice *voice = handle.get(host.mem);
-
+    LOG_DEBUG("sceNgsVoicePlay: {}", voice->state);
     if (!voice) {
         return RET_ERROR(SCE_NGS_ERROR_INVALID_ARG);
     }
@@ -690,8 +727,10 @@ EXPORT(int, sceNgsVoiceResume, SceNgsVoiceHandle handle) {
         return RET_ERROR(SCE_NGS_ERROR_INVALID_ARG);
     }
 
+    LOG_DEBUG("Resume: {}", voice->state);
     if (voice->state != ngs::VOICE_STATE_PAUSED)
-        return RET_ERROR(SCE_NGS_ERROR_INVALID_STATE);
+        //return RET_ERROR(SCE_NGS_ERROR_INVALID_STATE);
+        return SCE_NGS_OK;
 
     if (!voice->rack->system->voice_scheduler.resume(host.mem, voice)) {
         return RET_ERROR(SCE_NGS_ERROR);
@@ -700,7 +739,15 @@ EXPORT(int, sceNgsVoiceResume, SceNgsVoiceHandle handle) {
     return SCE_NGS_OK;
 }
 
-EXPORT(int, sceNgsVoiceSetFinishedCallback) {
+EXPORT(SceInt32, sceNgsVoiceSetFinishedCallback, SceNgsVoiceHandle voice_handle, Ptr<ngs::ModuleCallback> callback, Ptr<void> user_data) {
+    if (host.cfg.current_config.disable_ngs) {
+        return 0;
+    }
+
+    ngs::Voice *voice = voice_handle.get(host.mem);
+    if (!voice)
+        return RET_ERROR(SCE_NGS_ERROR_INVALID_ARG);
+
     return UNIMPLEMENTED();
 }
 
@@ -719,6 +766,75 @@ EXPORT(SceInt32, sceNgsVoiceSetModuleCallback, SceNgsVoiceHandle voice_handle, c
     storage->user_data = user_data;
 
     return 0;
+}
+
+enum ModuleIdentifier {
+    SCE_NGS_AT9_ID = 0x01015CAA, // Specifies the ATRAC9™ Player ID.
+    SCE_NGS_COMPRESSOR_ID = 0x01015CE1, //Specifies the Compressor ID.
+    SCE_NGS_COMPRESSOR_ID_V2 = 0x01025CE1, //Specifies the Compressor ID.
+    SCE_NGS_DELAY_ID = 0x01015CEB, // Specifies the Delay ID.
+    SCE_NGS_DISTORTION_ID = 0x01015CE2, //Specifies the Distortion ID.
+    SCE_NGS_ENVELOPE_ID = 0x01015CE3, //Specifies the Envelope ID.
+    SCE_NGS_FILTER_ID = 0x01015CE4, //Specifies the Filter ID.
+    SCE_NGS_FILTER_ID_2 = 0x02015CE4, //Specifies the Filter ID.
+    SCE_NGS_INPUT_MIXER_ID = 0x01015CE0, //Specifies the Input Mixer ID.
+    SCE_NGS_MIXER_ID = 0x01015CE9, //Specifies the Mixer ID.
+    SCE_NGS_OUTPUT_ID = 0x01015CED, //Specifies the Output ID. The output module returns a user
+    //state block of PCM samples. The size of the block represents
+    //the number of channels (output’s voice) * system granularity *
+    //sizeof(short).
+    SCE_NGS_PARAM_EQ_ID = 0x01015CEC, //Specifies the Parametric EQ ID.
+    SCE_NGS_PARAM_EQ_ID_2 = 0x02015CEC, //Specifies the Parametric EQ ID 2.
+    SCE_NGS_PAUSER_ID = 0x01015CE5, //Specifies the Pauser ID.
+    SCE_NGS_PLAYER_ID = 0x01015CE6, //Specifies the Player ID.
+    SCE_NGS_PITCHSHIFT_ID = 0x5CEA, //Specifies the Pitch Shift ID.
+    SCE_NGS_REVERB_ID = 0x01015CE7, //Specifies the Reverb ID.
+    SCE_NGS_REVERB_ID_2 = 0x01025CE7, //Specifies the Reverb ID.
+    SCE_NGS_GENERATOR_ID = 0x01015CE8, // Specifies the Signal Generator ID.
+};
+
+// crée une function qui retourne le nom en string du module par id (id est un SceUInt32) a base
+// de la table ModuleIdentifier
+std::string get_module_name(SceUInt32 id) {
+    switch (id) {
+    case SCE_NGS_AT9_ID:
+        return "ATRAC9";
+    case SCE_NGS_COMPRESSOR_ID:
+    case SCE_NGS_COMPRESSOR_ID_V2:
+        return "COMPRESSOR";
+    case SCE_NGS_DELAY_ID:
+        return "DELAY";
+    case SCE_NGS_DISTORTION_ID:
+        return "DISTORTION";
+    case SCE_NGS_ENVELOPE_ID:
+        return "ENVELOPE";
+    case SCE_NGS_FILTER_ID:
+    case SCE_NGS_FILTER_ID_2:
+        return "FILTER";
+    case SCE_NGS_INPUT_MIXER_ID:
+        return "INPUT_MIXER";
+    case SCE_NGS_MIXER_ID:
+        return "MIXER";
+    case SCE_NGS_OUTPUT_ID:
+        return "OUTPUT";
+    case SCE_NGS_PARAM_EQ_ID:
+        return "PARAM_EQ";
+    case SCE_NGS_PARAM_EQ_ID_2:
+        return "PARAM_EQ 2";
+    case SCE_NGS_PAUSER_ID:
+        return "PAUSER";
+    case SCE_NGS_PLAYER_ID:
+        return "PLAYER";
+    case SCE_NGS_PITCHSHIFT_ID:
+        return "PITCHSHIFT";
+    case SCE_NGS_REVERB_ID:
+    case SCE_NGS_REVERB_ID_2:
+        return "REVERB";
+    case SCE_NGS_GENERATOR_ID:
+        return "GENERATOR";
+    default:
+        return fmt::format("UNKNOWN: {}", log_hex(id));
+    }
 }
 
 EXPORT(SceInt32, sceNgsVoiceSetParamsBlock, SceNgsVoiceHandle voice_handle, const ngs::ModuleParameterHeader *header,
@@ -743,10 +859,27 @@ EXPORT(SceInt32, sceNgsVoiceSetParamsBlock, SceNgsVoiceHandle voice_handle, cons
 
         // init descriptor parameters
         const auto *desc = reinterpret_cast<const ngs::ParametersDescriptor *>(data);
+        const auto module_name = get_module_name(desc->id);
+        //LOG_INFO("module id: {}, module name: {}, size: {}", header->module_id, module_name, desc->size);
 
         // copy this current module inside current buffer data when it available with using descriptor size
         if (storage) {
             SceUInt8 *param_ptr = reinterpret_cast<SceUInt8 *>(storage->info.data.get(host.mem));
+            /*if (module_name == "PLAYER") {
+                const auto *get_params = reinterpret_cast<const ngs::player::Parameters *>(data);
+                LOG_DEBUG("playback, freq: {}, scal: {}", get_params->playback_frequency, get_params->playback_scalar);
+                for (auto i = 0; i < 4; i++) {
+                    const auto current_buffer = get_params->buffer_params[i];
+                    LOG_DEBUG("buffer {}, next buff: {}, numbytes: {}, loop count: {}", i, current_buffer.next_buffer_index, current_buffer.bytes_count, current_buffer.loop_count);
+                }
+            } else if (module_name == "ATRAC9") {
+                const auto *get_params = reinterpret_cast<const ngs::atrac9::Parameters *>(data);
+                LOG_DEBUG("playback, freq: {}, scal: {}", get_params->playback_frequency, get_params->playback_scalar);
+                for (auto i = 0; i < 4; i++) {
+                    const auto current_buffer = get_params->buffer_params[i];
+                    LOG_DEBUG("buffer {}, next buff: {}, numbytes: {}, loop count: {}", i, current_buffer.next_buffer_index, current_buffer.bytes_count, current_buffer.loop_count);
+                }
+            }*/
             memcpy(param_ptr, data, desc->size);
         } else
             ++num_error;

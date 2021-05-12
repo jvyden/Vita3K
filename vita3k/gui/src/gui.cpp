@@ -513,7 +513,7 @@ void get_param_info(HostState &host, const vfs::FileBuffer &param) {
 }
 
 void get_user_apps_title(GuiState &gui, HostState &host) {
-    fs::path app_path{ fs::path{ host.pref_path } / "ux0/app" };
+    const fs::path app_path{ fs::path{ host.pref_path } / "ux0/app" };
     if (!fs::exists(app_path))
         return;
 

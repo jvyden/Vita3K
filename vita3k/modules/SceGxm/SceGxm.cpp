@@ -721,7 +721,9 @@ EXPORT(int, sceGxmColorSurfaceSetData, SceGxmColorSurface *surface, Ptr<void> da
         return RET_ERROR(SCE_GXM_ERROR_INVALID_VALUE);
     }
 
-    return UNIMPLEMENTED();
+    surface->data = data.address();
+
+    return 0;
 }
 
 EXPORT(int, sceGxmColorSurfaceSetDitherMode, SceGxmColorSurface *surface, SceGxmColorSurfaceDitherMode ditherMode) {
@@ -737,7 +739,9 @@ EXPORT(int, sceGxmColorSurfaceSetFormat, SceGxmColorSurface *surface, SceGxmColo
         return RET_ERROR(SCE_GXM_ERROR_INVALID_POINTER);
     }
 
-    return UNIMPLEMENTED();
+    surface->colorFormat = format;
+
+    return 0;
 }
 
 EXPORT(int, sceGxmColorSurfaceSetGammaMode, SceGxmColorSurface *surface, SceGxmColorSurfaceGammaMode gammaMode) {
@@ -745,7 +749,9 @@ EXPORT(int, sceGxmColorSurfaceSetGammaMode, SceGxmColorSurface *surface, SceGxmC
         return RET_ERROR(SCE_GXM_ERROR_INVALID_POINTER);
     }
 
-    return UNIMPLEMENTED();
+    surface->backgroundTex.gamma_mode = gammaMode;
+
+    return 0;
 }
 
 EXPORT(void, sceGxmColorSurfaceSetScaleMode, SceGxmColorSurface *surface, SceGxmColorSurfaceScaleMode scaleMode) {
@@ -956,6 +962,8 @@ EXPORT(void, sceGxmDepthStencilSurfaceSetBackgroundStencil, SceGxmDepthStencilSu
 EXPORT(void, sceGxmDepthStencilSurfaceSetForceLoadMode, SceGxmDepthStencilSurface *surface, SceGxmDepthStencilForceLoadMode forceLoad) {
     assert(surface);
     // TODO: Implement on the renderer side
+    //LOG_DEBUG_IF(forceLoad == SCE_GXM_DEPTH_STENCIL_FORCE_LOAD_ENABLED, "forceload enable");
+    surface->zlsControl = (forceLoad & 2) | (surface->zlsControl & 0xFFFFFFFD);
     // surface->zlsControl = (forceLoad & SCE_GXM_DEPTH_STENCIL_FORCE_LOAD_ENABLED) | (surface->zlsControl & ~SCE_GXM_DEPTH_STENCIL_FORCE_LOAD_ENABLED);
     UNIMPLEMENTED();
 }
@@ -963,7 +971,8 @@ EXPORT(void, sceGxmDepthStencilSurfaceSetForceLoadMode, SceGxmDepthStencilSurfac
 EXPORT(void, sceGxmDepthStencilSurfaceSetForceStoreMode, SceGxmDepthStencilSurface *surface, SceGxmDepthStencilForceStoreMode forceStore) {
     assert(surface);
     // TODO: Implement on the renderer side
-    // surface->zlsControl = (forceStore & SCE_GXM_DEPTH_STENCIL_FORCE_STORE_ENABLED) | (surface->zlsControl & ~SCE_GXM_DEPTH_STENCIL_FORCE_STORE_ENABLED);
+    surface->zlsControl = (forceStore & SCE_GXM_DEPTH_STENCIL_FORCE_STORE_ENABLED) | (surface->zlsControl & ~SCE_GXM_DEPTH_STENCIL_FORCE_STORE_ENABLED);
+    //LOG_DEBUG_IF(forceStore == SCE_GXM_DEPTH_STENCIL_FORCE_STORE_ENABLED, "force store enable");
     UNIMPLEMENTED();
 }
 
@@ -976,11 +985,14 @@ EXPORT(int, sceGxmDestroyContext, Ptr<SceGxmContext> context) {
     return 0;
 }
 
-EXPORT(int, sceGxmDestroyDeferredContext, SceGxmContext *deferredContext) {
+EXPORT(int, sceGxmDestroyDeferredContext, Ptr<SceGxmContext> deferredContext) {
     if (!deferredContext) {
         return RET_ERROR(SCE_GXM_ERROR_INVALID_POINTER);
     }
-    return UNIMPLEMENTED();
+
+    free(host.mem, deferredContext);
+
+    return 0;
 }
 
 EXPORT(int, sceGxmDestroyRenderTarget, Ptr<SceGxmRenderTarget> renderTarget) {
@@ -1753,7 +1765,9 @@ EXPORT(int, sceGxmNotificationWait, const Ptr<SceGxmNotification> notification) 
 
     // TODO: This is so horrible
     volatile std::uint32_t *value = notification.get(host.mem)->address.get(host.mem);
+    //LOG_DEBUG("value: {}, notif value: {}", *value, notification.get(host.mem)->value);
     while (*value != notification.get(host.mem)->value) {
+        //LOG_INFO("Waiting..., value: {}, notif value: {}", *value, notification.get(host.mem)->value);
     }
 
     return 0;
@@ -1987,9 +2001,10 @@ EXPORT(Ptr<const void>, sceGxmPrecomputedVertexStateGetDefaultUniformBuffer, Sce
 }
 
 EXPORT(int, sceGxmPrecomputedVertexStateInit, SceGxmPrecomputedVertexState *state, Ptr<const SceGxmVertexProgram> program, Ptr<void> extra_data) {
-    if (!state || !program || !extra_data) {
+    if (!state)
+        return RET_ERROR(SCE_GXM_ERROR_INVALID_PRECOMPUTED_VERTEX_STATE);
+    else if (!program || !extra_data)
         return RET_ERROR(SCE_GXM_ERROR_INVALID_POINTER);
-    }
 
     MempoolObject allocator(extra_data, SCE_GXM_PRECOMPUTED_STATE_EXTRA_SIZE);
     SceGxmPrecomputedVertexState new_state;
@@ -2014,9 +2029,11 @@ EXPORT(int, sceGxmPrecomputedVertexStateInit, SceGxmPrecomputedVertexState *stat
 }
 
 EXPORT(int, sceGxmPrecomputedVertexStateSetAllTextures, SceGxmPrecomputedVertexState *precomputedState, Ptr<const SceGxmTexture> textureArray) {
-    if (!precomputedState || !textureArray) {
+    if (!precomputedState)
+        return RET_ERROR(SCE_GXM_ERROR_INVALID_PRECOMPUTED_VERTEX_STATE);
+
+    if (!textureArray)
         return RET_ERROR(SCE_GXM_ERROR_INVALID_POINTER);
-    }
 
     auto &state_textures = *precomputedState->textures.get(host.mem);
     for (int i = 0; i < precomputedState->texture_count; ++i) {
@@ -2432,6 +2449,8 @@ EXPORT(void, sceGxmSetBackStencilRef, SceGxmContext *context, uint8_t sref) {
 }
 
 EXPORT(void, sceGxmSetBackVisibilityTestEnable, SceGxmContext *context, SceGxmVisibilityTestMode enable) {
+    //LOG_DEBUG("Back, State: {}", enable);
+    context->state.front_visibity_test_mode = enable;
     UNIMPLEMENTED();
 }
 
@@ -2658,6 +2677,7 @@ EXPORT(void, sceGxmSetFrontStencilRef, SceGxmContext *context, uint8_t sref) {
 }
 
 EXPORT(void, sceGxmSetFrontVisibilityTestEnable, SceGxmContext *context, SceGxmVisibilityTestMode enable) {
+    //LOG_DEBUG("Front, State: {}", enable);
     UNIMPLEMENTED();
 }
 
@@ -2973,8 +2993,9 @@ EXPORT(int, sceGxmSetVisibilityBuffer, SceGxmContext *immediateContext, Ptr<void
         return RET_ERROR(SCE_GXM_ERROR_INVALID_ALIGNMENT);
 
     STUBBED("Set all visible");
+    const auto state = immediateContext->state.front_visibity_test_mode == SCE_GXM_VISIBILITY_TEST_ENABLED ? 0xFF : 0;
 
-    memset(bufferBase.get(host.mem), 0xFF, SCE_GXM_GPU_CORE_COUNT * stridePerCore);
+    memset(bufferBase.get(host.mem), state, SCE_GXM_GPU_CORE_COUNT * stridePerCore);
 
     return 0;
 }
