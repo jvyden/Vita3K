@@ -21,7 +21,11 @@
 #include <host/functions.h>
 #include <util/types.h>
 
-static int display_wait(HostState &host, SceUID current_thread, const std::int32_t vcount) {
+static bool use_multi;
+static int display_wait(HostState &host, SceUID current_thread, const std::int32_t vcount, bool cb) {
+    if (cb)
+        process_callbacks(host.kernel, current_thread);
+
     wait_vblank(host.display, host.kernel, current_thread, vcount);
 
     if (host.display.abort.load())
@@ -114,50 +118,54 @@ EXPORT(int, sceDisplayUnregisterVblankStartCallback) {
 
 EXPORT(int, sceDisplayWaitSetFrameBuf) {
     STUBBED("move after setframebuf");
-
-    return display_wait(host, thread_id, 1);
+    //LOG_DEBUG("WaitSetFrameBuf: 1");
+    return use_multi ? 0 : display_wait(host, thread_id, static_cast<std::int32_t>(1), false);
 }
 
 EXPORT(int, sceDisplayWaitSetFrameBufCB) {
     STUBBED("move after setframebuf");
-
-    return display_wait(host, thread_id, 1);
+    //LOG_DEBUG("WaitSetFrameBufCB: 1");
+    return use_multi ? 0 : display_wait(host, thread_id, 1, true);
 }
 
 EXPORT(int, sceDisplayWaitSetFrameBufMulti, SceUInt vcount) {
     STUBBED("move after setframebuf");
-
-    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount));
+    //LOG_DEBUG("WaitSetFrameBufMulti: {}", vcount);
+    use_multi = true;
+    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount), false);
 }
 
 EXPORT(int, sceDisplayWaitSetFrameBufMultiCB, SceUInt vcount) {
     STUBBED("move after setframebuf");
-
-    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount));
+    //LOG_DEBUG("WaitSetFrameBufMultiCB: {}", vcount);
+    use_multi = true;
+    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount), true);
 }
 
 EXPORT(int, sceDisplayWaitVblankStart) {
     STUBBED("wait for vblank");
-
-    return display_wait(host, thread_id, 1);
+    //LOG_DEBUG("WaitVblankStart: 1");
+    return use_multi ? 0 : display_wait(host, thread_id, 1, false);
 }
 
 EXPORT(int, sceDisplayWaitVblankStartCB) {
     STUBBED("wait for vblank");
-
-    return display_wait(host, thread_id, 1);
+    //LOG_DEBUG("WaitVblankStartCB: 1");
+    return use_multi ? 0 : display_wait(host, thread_id, 1, true);
 }
 
 EXPORT(int, sceDisplayWaitVblankStartMulti, SceUInt vcount) {
     STUBBED("wait for vblank");
-
-    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount));
+    //LOG_DEBUG("WaitVblankStartMulti: {}", vcount);
+    use_multi = true;
+    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount), false);
 }
 
 EXPORT(int, sceDisplayWaitVblankStartMultiCB, SceUInt vcount) {
     STUBBED("wait for vblank");
-
-    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount));
+    //LOG_DEBUG("WaitVblankStartMultiCB: {}", vcount);
+    use_multi = true;
+    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount), false);
 }
 
 BRIDGE_IMPL(_sceDisplayGetFrameBuf)

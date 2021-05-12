@@ -80,14 +80,15 @@ enum Row {
     THIRD = 3
 };
 
+static bool is_max_length(Ime &ime) {
+}
+
 static void update_str(Ime &ime, const std::u16string &key) {
     if (ime.str.empty())
         ime.edit_text.preeditIndex = 0;
     ime.edit_text.editIndex = ime.edit_text.caretIndex;
-    if (ime.str.length() < ime.param.maxTextLength) {
-        ime.str.insert(ime.edit_text.caretIndex, key);
-        ime.edit_text.caretIndex++;
-    }
+    ime.str.insert(ime.edit_text.caretIndex, key);
+    ime.edit_text.caretIndex++;
     if (ime.caps_level == YES)
         ime.caps_level = NO;
     ime.event_id = SCE_IME_EVENT_UPDATE_TEXT;
@@ -99,7 +100,11 @@ static void update_key(Ime &ime, const std::u16string &key) {
 }
 
 static void reset_preedit(Ime &ime) {
-    ime.caretIndex = ime.edit_text.caretIndex;
+    if (ime.str.length() > ime.param.maxTextLength) {
+        ime.edit_text.caretIndex = ime.caretIndex = ime.param.maxTextLength;
+        ime.str.resize(ime.param.maxTextLength);
+    } else
+        ime.caretIndex = ime.edit_text.caretIndex;
     ime.edit_text.preeditIndex = ime.edit_text.caretIndex;
     ime.edit_text.preeditLength = ime.edit_text.editLengthChange = 0;
     ime.event_id = SCE_IME_EVENT_UPDATE_TEXT;
@@ -326,7 +331,7 @@ void draw_ime(Ime &ime, HostState &host) {
                     if (special.first)
                         ImGui::Separator();
                 }
-                if (ImGui::Button(string_utils::utf16_to_utf8(special.second[i]).c_str(), NUM_BUTTON_SIZE) && (ime.str.length() < ime.param.maxTextLength))
+                if (ImGui::Button(string_utils::utf16_to_utf8(special.second[i]).c_str(), NUM_BUTTON_SIZE))
                     update_key(ime, special.second[i]);
                 if (i != (special.second.size() - 1))
                     ImGui::SameLine(0, SPACE);
@@ -339,24 +344,24 @@ void draw_ime(Ime &ime, HostState &host) {
             for (uint32_t i = 0; i < numeric.second.size(); i++) {
                 if (!i)
                     ImGui::SetCursorPos(ImVec2(NUM_BUTTON_POS_X, key_row_pos[numeric.first] * SCALE.y));
-                if (ImGui::Button(string_utils::utf16_to_utf8(numeric.second[i]).c_str(), ImVec2(i < 3 ? NUM_BUTTON_SIZE.x : 65.f * SCALE.x, NUM_BUTTON_SIZE.y)) && (ime.str.length() < ime.param.maxTextLength))
+                if (ImGui::Button(string_utils::utf16_to_utf8(numeric.second[i]).c_str(), ImVec2(i < 3 ? NUM_BUTTON_SIZE.x : 65.f * SCALE.x, NUM_BUTTON_SIZE.y)))
                     update_key(ime, numeric.second[i]);
                 if (i != (numeric.second.size() - 1))
                     ImGui::SameLine(0, SPACE);
             }
         }
         ImGui::SetCursorPos(ImVec2(NUM_BUTTON_POS_X, LAST_ROW_KEY_POS));
-        if (ImGui::Button("0", ImVec2((NUM_BUTTON_SIZE.x * 2.f) + SPACE, NUM_BUTTON_SIZE.y)) && (ime.str.length() < ime.param.maxTextLength))
+        if (ImGui::Button("0", ImVec2((NUM_BUTTON_SIZE.x * 2.f) + SPACE, NUM_BUTTON_SIZE.y)))
             update_key(ime, u"0");
         ImGui::SameLine(0, SPACE);
-        if (ImGui::Button(".", NUM_BUTTON_SIZE) && (ime.str.length() < ime.param.maxTextLength))
+        if (ImGui::Button(".", NUM_BUTTON_SIZE))
             update_ponct(ime, u".");
     } else {
         for (const auto &keyboard : is_shift ? shift_lang_key : lang_key) {
             for (uint32_t i = 0; i < keyboard.second.size(); i++) {
                 if (!i)
                     ImGui::SetCursorPos(ImVec2(lang_keyboard_pos[keyboard.first] * SCALE.x, key_row_pos[keyboard.first] * SCALE.y));
-                if (ImGui::Button(string_utils::utf16_to_utf8(keyboard.second[i]).c_str(), KEY_BUTTON_SIZE) && (ime.str.length() < ime.param.maxTextLength))
+                if (ImGui::Button(string_utils::utf16_to_utf8(keyboard.second[i]).c_str(), KEY_BUTTON_SIZE))
                     update_key(ime, keyboard.second[i]);
                 if (i != (keyboard.second.size() - 1))
                     ImGui::SameLine(0, SPACE);

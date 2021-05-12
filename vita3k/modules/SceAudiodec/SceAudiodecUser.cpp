@@ -56,7 +56,7 @@ struct SceAudiodecInfoMp3 {
 struct SceAudiodecInfoAac {
     uint32_t is_adts;
     uint32_t channels;
-    uint32_t sample_ate;
+    uint32_t sample_rate;
     uint32_t is_sbr;
 };
 
@@ -90,9 +90,16 @@ struct SceAudiodecCtrl {
     Ptr<SceAudiodecInfo> info;
 };
 
-EXPORT(int, sceAudiodecClearContext) {
+EXPORT(SceInt32, sceAudiodecClearContext, SceAudiodecCtrl *ctrl) {
+    //const auto state = host.kernel.obj_store.get<AudiodecState>();
+    //std::lock_guard<std::mutex> lock(state->mutex);
+    //state->decoders.clear();
+
     return UNIMPLEMENTED();
 }
+
+constexpr size_t NORMAL_ES_BUFFER_SIZE = KB(8);
+constexpr size_t NORMAL_PCM_BUFFER_SIZE = KB(4);
 
 EXPORT(int, sceAudiodecCreateDecoder, SceAudiodecCtrl *ctrl, SceAudiodecCodec codec) {
     const auto state = host.kernel.obj_store.get<AudiodecState>();
@@ -100,7 +107,6 @@ EXPORT(int, sceAudiodecCreateDecoder, SceAudiodecCtrl *ctrl, SceAudiodecCodec co
 
     SceUID handle = host.kernel.get_next_uid();
     ctrl->handle = handle;
-
     switch (codec) {
     case SCE_AUDIODEC_TYPE_AT9: {
         SceAudiodecInfoAt9 &info = ctrl->info.get(host.mem)->at9;
@@ -116,6 +122,22 @@ EXPORT(int, sceAudiodecCreateDecoder, SceAudiodecCtrl *ctrl, SceAudiodecCodec co
         info.super_frame_size = decoder->get(DecoderQuery::AT9_SUPERFRAME_SIZE);
         info.frames_in_super_frame = decoder->get(DecoderQuery::AT9_FRAMES_IN_SUPERFRAME);
         return host.cfg.current_config.disable_at9_decoder ? -1 : 0;
+    }
+    case SCE_AUDIODEC_TYPE_AAC: {
+        //SceAudiodecInfoAac &info = ctrl->info.get(host.mem)->aac;
+        //DecoderPtr decoder = std::make_shared<AacDecoderState>(info.sample_rate, info.channels);
+        //state->decoders[handle] = decoder;
+
+        //ctrl->es_size_max = NORMAL_ES_BUFFER_SIZE;
+        //ctrl->pcm_size_max = NORMAL_PCM_BUFFER_SIZE;
+        // no outs :O
+        SceAudiodecInfoMp3 &info = ctrl->info.get(host.mem)->mp3;
+        DecoderPtr decoder = std::make_shared<Mp3DecoderState>(info.channels);
+        state->decoders[handle] = decoder;
+
+        ctrl->es_size_max = 1441;
+        ctrl->pcm_size_max = 1152 * info.channels * sizeof(int16_t);
+        return 0;
     }
     case SCE_AUDIODEC_TYPE_MP3: {
         SceAudiodecInfoMp3 &info = ctrl->info.get(host.mem)->mp3;
@@ -143,9 +165,69 @@ EXPORT(int, sceAudiodecCreateDecoder, SceAudiodecCtrl *ctrl, SceAudiodecCodec co
     }
 }
 
-EXPORT(int, sceAudiodecCreateDecoderExternal) {
-    STUBBED("Hack for LLE MP4"); // Remove this after implement AAC or impelment SceMP4 in HLE
-    return -1;
+EXPORT(int, sceAudiodecCreateDecoderExternal, SceAudiodecCtrl *ctrl, SceAudiodecCodec codec) {
+    LOG_DEBUG("sceAudiodecCreateDecoderExternal, codec: {}", codec);
+    STUBBED("Hack for LLE MP4");
+    if (host.cfg.current_config.disable_at9_decoder)
+        return -1;
+
+    const auto state = host.kernel.obj_store.get<AudiodecState>();
+    std::lock_guard<std::mutex> lock(state->mutex);
+
+    SceUID handle = host.kernel.get_next_uid();
+    ctrl->handle = handle;
+
+    switch (codec) {
+    case SCE_AUDIODEC_TYPE_AT9: {
+        SceAudiodecInfoAt9 &info = ctrl->info.get(host.mem)->at9;
+        DecoderPtr decoder = std::make_shared<Atrac9DecoderState>(info.config_data);
+        state->decoders[handle] = decoder;
+
+        ctrl->es_size_max = decoder->get(DecoderQuery::AT9_SUPERFRAME_SIZE);
+        ctrl->pcm_size_max = decoder->get(DecoderQuery::AT9_SAMPLE_PER_SUPERFRAME)
+            * decoder->get(DecoderQuery::CHANNELS) * sizeof(int16_t);
+        info.channels = decoder->get(DecoderQuery::CHANNELS);
+        info.bit_rate = decoder->get(DecoderQuery::BIT_RATE);
+        info.sample_rate = decoder->get(DecoderQuery::SAMPLE_RATE);
+        info.super_frame_size = decoder->get(DecoderQuery::AT9_SUPERFRAME_SIZE);
+        info.frames_in_super_frame = decoder->get(DecoderQuery::AT9_FRAMES_IN_SUPERFRAME);
+        return host.cfg.current_config.disable_at9_decoder ? -1 : 0;
+    }
+    case SCE_AUDIODEC_TYPE_AAC: {
+        SceAudiodecInfoMp3 &info = ctrl->info.get(host.mem)->mp3;
+        DecoderPtr decoder = std::make_shared<Mp3DecoderState>(info.channels);
+        state->decoders[handle] = decoder;
+
+        ctrl->es_size_max = 1441;
+        ctrl->pcm_size_max = 576 * info.channels * sizeof(int16_t);
+        // no outs :O
+
+        return 0;
+    }
+    case SCE_AUDIODEC_TYPE_MP3: {
+        SceAudiodecInfoMp3 &info = ctrl->info.get(host.mem)->mp3;
+        DecoderPtr decoder = std::make_shared<Mp3DecoderState>(info.channels);
+        state->decoders[handle] = decoder;
+
+        ctrl->es_size_max = 1441;
+
+        switch (info.version) {
+        case SCE_AUDIODEC_MP3_MPEG_VERSION_1:
+            ctrl->pcm_size_max = 1152 * info.channels * sizeof(int16_t);
+            return 0;
+        case SCE_AUDIODEC_MP3_MPEG_VERSION_2:
+        case SCE_AUDIODEC_MP3_MPEG_VERSION_2_5:
+            ctrl->pcm_size_max = 576 * info.channels * sizeof(int16_t);
+            return 0;
+        default:
+            return RET_ERROR(SCE_AUDIODEC_MP3_ERROR_INVALID_MPEG_VERSION);
+        }
+    }
+    default: {
+        LOG_ERROR("Unimplemented audio decoder {}.", codec);
+        return -1;
+    }
+    }
 }
 
 EXPORT(int, sceAudiodecCreateDecoderResident) {
@@ -159,7 +241,6 @@ EXPORT(int, sceAudiodecDecode, SceAudiodecCtrl *ctrl) {
     DecoderSize size = {};
 
     const auto es_size = std::min(decoder->get_es_size(ctrl->es_data.get(host.mem)), ctrl->es_size_max);
-
     decoder->send(ctrl->es_data.get(host.mem), es_size);
     decoder->receive(ctrl->pcm_data.get(host.mem), &size);
 
@@ -187,8 +268,12 @@ EXPORT(int, sceAudiodecDeleteDecoder, SceAudiodecCtrl *ctrl) {
     return 0;
 }
 
-EXPORT(int, sceAudiodecDeleteDecoderExternal) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceAudiodecDeleteDecoderExternal, SceAudiodecCtrl *ctrl) {
+    const auto state = host.kernel.obj_store.get<AudiodecState>();
+    std::lock_guard<std::mutex> lock(state->mutex);
+    state->decoders.erase(ctrl->handle);
+
+    return 0;
 }
 
 EXPORT(int, sceAudiodecDeleteDecoderResident) {

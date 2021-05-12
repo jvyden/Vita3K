@@ -269,7 +269,6 @@ int main(int argc, char *argv[]) {
                 renderer::gl::pre_compile_program(glstate, host.base_path.c_str(), host.io.title_id.c_str(), hash);
                 gui::draw_pre_compiling_shaders_progress(gui, host, uint32_t(glstate.shaders_cache_hashs.size()));
 
-                host.display.condvar.notify_all();
                 gui::draw_end(gui, host.window.get());
                 SDL_SetWindowTitle(host.window.get(), fmt::format("{} | {} ({}) | Please wait, compilling shaders...", window_title, host.current_app_title, host.io.title_id).c_str());
             }

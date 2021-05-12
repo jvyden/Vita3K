@@ -303,6 +303,18 @@ EXPORT(int, sceMsgDialogInit, const Ptr<SceMsgDialogParam> param) {
             host.common_dialog.msg.message = "No content is available yet.";
             host.common_dialog.msg.btn_num = 0;
             break;
+        case SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_PSN_AGE_RESTRICTION:
+            host.common_dialog.msg.message = "You cannot use PlayStation™Network features in this application due to age restrictions.";
+            host.common_dialog.msg.btn[0] = "Ok";
+            host.common_dialog.msg.btn_val[0] = SCE_MSG_DIALOG_BUTTON_ID_OK;
+            host.common_dialog.msg.btn_num = 1;
+            break;
+        case SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_PSN_CHAT_RESTRICTION:
+            host.common_dialog.msg.message = "Use of this application's chat and messaging features is not allowed for your account.";
+            host.common_dialog.msg.btn[0] = "Ok";
+            host.common_dialog.msg.btn_val[0] = SCE_MSG_DIALOG_BUTTON_ID_OK;
+            host.common_dialog.msg.btn_num = 1;
+            break;
         case SCE_MSG_DIALOG_SYSMSG_TYPE_INVALID:
         default:
             LOG_ERROR("Attempt to init message dialog with unknown system message mode: {}", log_hex(p->sysMsgParam.get(host.mem)->sysMsgType));
@@ -393,6 +405,12 @@ EXPORT(int, sceMsgDialogTerm) {
 }
 
 EXPORT(int, sceNetCheckDialogAbort) {
+    //if (host.common_dialog.type != MESSAGE_DIALOG) {
+    //    return RET_ERROR(SCE_COMMON_DIALOG_ERROR_NOT_SUPPORTED);
+    //}
+    //host.common_dialog.status = SCE_COMMON_DIALOG_STATUS_FINISHED;
+    //host.common_dialog.result = SCE_COMMON_DIALOG_RESULT_ABORTED;
+
     return UNIMPLEMENTED();
 }
 
@@ -400,27 +418,33 @@ EXPORT(int, sceNetCheckDialogGetPS3ConnectInfo) {
     return UNIMPLEMENTED();
 }
 
-typedef struct SceNetCheckDialogResult {
-    SceInt32 result;
-    SceBool psnModeSucceeded;
-    SceUInt8 reserved[124];
-} SceNetCheckDialogResult;
-
 EXPORT(int, sceNetCheckDialogGetResult, SceNetCheckDialogResult *result) {
     result->result = -1;
+    result->psnModeSucceeded = false;
+
     return UNIMPLEMENTED();
 }
 
 EXPORT(SceCommonDialogStatus, sceNetCheckDialogGetStatus) {
     STUBBED("SCE_COMMON_DIALOG_STATUS_FINISHED");
+    //if (host.common_dialog.status == SCE_COMMON_DIALOG_STATUS_RUNNING)
+    //    host.common_dialog.status = SCE_COMMON_DIALOG_STATUS_FINISHED;
+
     return SCE_COMMON_DIALOG_STATUS_FINISHED;
 }
 
 EXPORT(int, sceNetCheckDialogInit) {
+    //    host.common_dialog.status = SCE_COMMON_DIALOG_STATUS_RUNNING;
     return UNIMPLEMENTED();
 }
 
 EXPORT(int, sceNetCheckDialogTerm) {
+    //if (host.common_dialog.type != MESSAGE_DIALOG) {
+    //  return RET_ERROR(SCE_COMMON_DIALOG_ERROR_NOT_SUPPORTED);
+    //}
+    host.common_dialog.status = SCE_COMMON_DIALOG_STATUS_NONE;
+    host.common_dialog.type = NO_DIALOG;
+
     return UNIMPLEMENTED();
 }
 
@@ -1353,6 +1377,10 @@ EXPORT(int, sceVideoImportDialogTerm) {
     return UNIMPLEMENTED();
 }
 
+EXPORT(int, SceCommonDialog_B7D4C911) {
+    return UNIMPLEMENTED();
+}
+
 BRIDGE_IMPL(sceCameraImportDialogAbort)
 BRIDGE_IMPL(sceCameraImportDialogGetResult)
 BRIDGE_IMPL(sceCameraImportDialogGetStatus)
@@ -1472,3 +1500,5 @@ BRIDGE_IMPL(sceVideoImportDialogGetResult)
 BRIDGE_IMPL(sceVideoImportDialogGetStatus)
 BRIDGE_IMPL(sceVideoImportDialogInit)
 BRIDGE_IMPL(sceVideoImportDialogTerm)
+
+BRIDGE_IMPL(SceCommonDialog_B7D4C911)

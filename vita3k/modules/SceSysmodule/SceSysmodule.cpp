@@ -48,6 +48,9 @@ EXPORT(int, sceSysmoduleIsLoadedInternal) {
 EXPORT(int, sceSysmoduleLoadModule, SceSysmoduleModuleId module_id) {
     if (module_id < 0 || module_id > SYSMODULE_COUNT)
         return SCE_SYSMODULE_ERROR_INVALID_VALUE;
+    LOG_DEBUG("module id: {}", module_id);
+    for (const auto &module : sysmodule_paths[module_id])
+        LOG_DEBUG("module: {}", module);
 
     if (is_modules_enable(host, module_id)) {
         if (load_module(host, module_id))

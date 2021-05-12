@@ -1434,7 +1434,9 @@ EXPORT(int, _ZNSt6_MutexD2Ev) {
 }
 
 EXPORT(int, _ZNSt6_WinitC1Ev) {
-    return UNIMPLEMENTED();
+    std::_Winit::_Winit();
+
+    return 0;
 }
 
 EXPORT(int, _ZNSt6_WinitC2Ev) {
@@ -1518,7 +1520,9 @@ EXPORT(int, _ZNSt8ios_base17register_callbackEPFvNS_5eventERS_iEi) {
 }
 
 EXPORT(int, _ZNSt8ios_base4InitC1Ev) {
-    return UNIMPLEMENTED();
+    std::ios_base::Init::Init();
+    
+    return 0;
 }
 
 EXPORT(int, _ZNSt8ios_base4InitC2Ev) {

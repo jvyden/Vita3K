@@ -128,7 +128,8 @@ void pre_load_app(GuiState &gui, HostState &host, bool live_area, const std::str
 }
 
 void pre_run_app(GuiState &gui, HostState &host, const std::string &app_path) {
-    if (app_path.find("NPXS") == std::string::npos) {
+    const auto user_app = ((app_path.find("NPXS10007") != std::string::npos) || (app_path.find("NPXS") == std::string::npos));
+    if (user_app) {
         if (host.io.app_path != app_path) {
             if (!host.io.app_path.empty())
                 gui.live_area.app_close = true;

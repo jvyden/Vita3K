@@ -51,6 +51,8 @@ struct InitialFiber;
 struct CodecEngineBlock;
 
 typedef std::shared_ptr<ThreadState> ThreadStatePtr;
+typedef std::shared_ptr<SceKernelMemBlockInfo> SceKernelMemBlockInfoPtr;
+typedef std::map<SceUID, SceKernelMemBlockInfoPtr> Blocks;
 typedef std::map<SceUID, CodecEngineBlock> CodecEngineBlocks;
 typedef std::map<SceUID, Ptr<Ptr<void>>> SlotToAddress;
 typedef std::map<SceUID, ThreadStatePtr> ThreadStatePtrs;
@@ -114,7 +116,9 @@ struct CorenumAllocator {
 
 struct KernelState {
     KernelState();
-
+    
+    Blocks blocks;
+    Blocks vm_blocks;
     std::mutex mutex;
     CodecEngineBlocks codec_blocks;
 

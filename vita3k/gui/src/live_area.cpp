@@ -475,9 +475,9 @@ void init_live_area(GuiState &gui, HostState &host) {
 
     const auto live_area_lang = user_lang[LIVE_AREA];
     const auto app_path = gui.apps_list_opened[gui.current_app_selected];
-    const auto is_sys_app = app_path.find("NPXS") != std::string::npos;
+    const auto is_sys_app = ((app_path.find("NPXS10007") == std::string::npos) && (app_path.find("NPXS") != std::string::npos));
     const auto is_ps_app = app_path.find("PCS") != std::string::npos;
-    const VitaIoDevice app_device = is_sys_app ? VitaIoDevice::vs0 : VitaIoDevice::ux0;
+    const VitaIoDevice app_device = is_sys_app ? VitaIoDevice::vs0 : ((app_path != "NPXS10007") ? VitaIoDevice::ux0 : VitaIoDevice::pd0);
     const auto APP_INDEX = get_app_index(gui, app_path);
 
     if (is_ps_app && (sku_flag.find(app_path) == sku_flag.end()))
@@ -571,10 +571,8 @@ void init_live_area(GuiState &gui, HostState &host) {
 
                 if (default_contents)
                     vfs::read_file(VitaIoDevice::vs0, buffer, host.pref_path, "data/internal/livearea/default/sce_sys/livearea/contents/" + contents.second);
-                else if (app_device == VitaIoDevice::vs0)
-                    vfs::read_file(VitaIoDevice::vs0, buffer, host.pref_path, "app/" + app_path + "/sce_sys/livearea/contents/" + contents.second);
                 else
-                    vfs::read_app_file(buffer, host.pref_path, app_path, live_area_path.string() + "/contents/" + contents.second);
+                    vfs::read_file(app_device, buffer, host.pref_path, (fs::path("app") / app_path / live_area_path / "contents" / contents.second).string());
 
                 if (buffer.empty()) {
                     if (is_ps_app || is_sys_app)

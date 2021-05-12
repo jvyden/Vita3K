@@ -21,6 +21,8 @@
 #include <kernel/types.h>
 #include <mutex>
 
+#include <util/log.h>
+
 void Callback::notify(SceUID notifier_id, SceInt32 notify_arg) {
     std::lock_guard lock(this->_mutex);
     this->notifier_id = notifier_id;

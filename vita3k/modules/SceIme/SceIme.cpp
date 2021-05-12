@@ -32,12 +32,20 @@ EXPORT(void, SceImeEventHandler, Ptr<void> arg, const SceImeEvent *e) {
 }
 
 EXPORT(SceInt32, sceImeClose) {
+    if (!host.ime.state)
+        return RET_ERROR(SCE_IME_ERROR_NOT_OPENED);
+
     host.ime.state = false;
 
     return 0;
 }
 
 EXPORT(SceInt32, sceImeOpen, SceImeParam *param) {
+    if (host.ime.state)
+        return RET_ERROR(SCE_IME_ERROR_ALREADY_OPENED);
+    else if (param->maxTextLength > SCE_IME_MAX_TEXT_LENGTH)
+        return RET_ERROR(SCE_IME_ERROR_INVALID_MAX_TEXT_LENGTH);
+
     host.ime.caps_level = 0;
     host.ime.caretIndex = 0;
     host.ime.edit_text = {};
@@ -63,7 +71,7 @@ EXPORT(SceInt32, sceImeOpen, SceImeParam *param) {
     }
 
     gui::init_ime_lang(host.ime, SceImeLanguage(host.cfg.current_ime_lang));
-
+    LOG_DEBUG("lang: {}", host.ime.param.languagesForced);
     host.ime.edit_text.str = host.ime.param.inputTextBuffer;
     host.ime.param.inputTextBuffer = Ptr<SceWChar16>(alloc(host.mem, SCE_IME_MAX_PREEDIT_LENGTH + host.ime.param.maxTextLength + 1, "ime_str"));
     host.ime.str = reinterpret_cast<char16_t *>(host.ime.param.initialText.get(host.mem));
@@ -82,6 +90,9 @@ EXPORT(SceInt32, sceImeOpen, SceImeParam *param) {
 }
 
 EXPORT(SceInt32, sceImeSetCaret, const SceImeCaret *caret) {
+    if (!host.ime.state)
+        return RET_ERROR(SCE_IME_ERROR_NOT_OPENED);
+
     Ptr<SceImeEvent> event = Ptr<SceImeEvent>(alloc(host.mem, sizeof(SceImeEvent), "ime_event"));
     SceImeEvent *e = event.get(host.mem);
     e->param.caretIndex = caret->index;
@@ -91,6 +102,9 @@ EXPORT(SceInt32, sceImeSetCaret, const SceImeCaret *caret) {
 }
 
 EXPORT(SceInt32, sceImeSetPreeditGeometry, const SceImePreeditGeometry *preedit) {
+    if (!host.ime.state)
+        return RET_ERROR(SCE_IME_ERROR_NOT_OPENED);
+
     Ptr<SceImeEvent> event = Ptr<SceImeEvent>(alloc(host.mem, sizeof(SceImeEvent), "ime_event"));
     SceImeEvent *e = event.get(host.mem);
     e->param.rect.height = preedit->height;
@@ -101,11 +115,32 @@ EXPORT(SceInt32, sceImeSetPreeditGeometry, const SceImePreeditGeometry *preedit)
     return 0;
 }
 
-EXPORT(int, sceImeSetText) {
-    return UNIMPLEMENTED();
+EXPORT(SceInt32, sceImeSetText, const Ptr<SceWChar16> text, SceUInt32 length) {
+    LOG_DEBUG("text: {}, length: {}", string_utils::utf16_to_utf8(host.ime.str), length);      
+
+    if (!host.ime.state)
+        return RET_ERROR(SCE_IME_ERROR_NOT_OPENED);
+    else if (!text)
+        return RET_ERROR(SCE_IME_ERROR_INVALID_POINTER);
+    
+    host.ime.str = reinterpret_cast<char16_t *>(text.get(host.mem));
+    Ptr<SceImeEvent> event = Ptr<SceImeEvent>(alloc(host.mem, sizeof(SceImeEvent), "ime_event"));
+    SceImeEvent *e = event.get(host.mem);
+    
+    memcpy(host.ime.edit_text.str.get(host.mem), host.ime.str.c_str(), length * sizeof(SceWChar16) + 1);
+
+    e->param.text = host.ime.edit_text;
+    e->param.caretIndex = host.ime.caretIndex = length;
+
+    CALL_EXPORT(SceImeEventHandler, host.ime.param.arg, e);
+
+    return 0;
 }
 
 EXPORT(SceInt32, sceImeUpdate) {
+    if (!host.ime.state)
+        return RET_ERROR(SCE_IME_ERROR_NOT_OPENED);
+
     Ptr<SceImeEvent> event = Ptr<SceImeEvent>(alloc(host.mem, sizeof(SceImeEvent), "ime_event"));
     SceImeEvent *e = event.get(host.mem);
     e->id = host.ime.event_id;

@@ -28,8 +28,11 @@ EXPORT(int, sceTouchClearRegion) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceTouchDisableTouchForce) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceTouchDisableTouchForce, SceUInt32 port) {
+    LOG_DEBUG("port: {}", port);
+    host.touch.touch_mode[port] = SCE_TOUCH_SAMPLING_STATE_STOP;
+
+    return 0;
 }
 
 EXPORT(int, sceTouchDisableTouchForceExt) {
@@ -40,8 +43,11 @@ EXPORT(int, sceTouchEnableIdleTimerCancelSetting) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceTouchEnableTouchForce) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceTouchEnableTouchForce, SceUInt32 port) {
+    LOG_DEBUG("port: {}, state: {}", port, host.touch.touch_mode[port]);
+    host.touch.touch_mode[port] = SCE_TOUCH_SAMPLING_STATE_START;
+
+    return 0;
 }
 
 EXPORT(int, sceTouchEnableTouchForceExt) {

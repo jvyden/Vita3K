@@ -114,29 +114,29 @@ static void draw_message_dialog(DialogState &common_dialog, float FONT_SCALE, Im
 
 static void draw_trophy_setup_dialog(DialogState &common_dialog, float FONT_SCALE, ImVec2 SCALE) {
     int timer = (static_cast<int64_t>(common_dialog.trophy.tick) - static_cast<int64_t>(SDL_GetTicks())) / 1000;
-    if (timer > 0) {
-        const auto display_size = ImGui::GetIO().DisplaySize;
-        ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(display_size, ImGuiCond_Always);
-        ImGui::Begin("##preparing_app", nullptr, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
-        const auto WINDOW_SIZE = ImVec2(764.f * SCALE.x, 440.f * SCALE.y);
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.f * SCALE.x);
-        ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.f);
-        ImGui::SetNextWindowPos(ImVec2(display_size.x / 2.f, display_size.y / 2.f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        ImGui::BeginChild("##preparing_app_child", WINDOW_SIZE, false, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
-        const auto str = !common_dialog.lang.trophy["preparing_start_app"].empty() ? common_dialog.lang.trophy["preparing_start_app"].c_str() : "Preparing to start the application...";
-        ImGui::SetWindowFontScale(1.2f * FONT_SCALE);
-        const auto str_size = ImGui::CalcTextSize(str);
-        const auto STR_POS = ImVec2((WINDOW_SIZE.x / 2.f) - (str_size.x / 2.f), (WINDOW_SIZE.y / 2.f) - (str_size.y / 2.f));
-        ImGui::SetCursorPos(STR_POS);
-        ImGui::TextColored(GUI_COLOR_TEXT, "%s", str);
-        ImGui::EndChild();
-        ImGui::PopStyleVar(2);
-        ImGui::End();
-    } else {
-        common_dialog.status = SCE_COMMON_DIALOG_STATUS_FINISHED;
-        common_dialog.result = SCE_COMMON_DIALOG_RESULT_OK;
-    }
+    //if (timer > 0) {
+    const auto display_size = ImGui::GetIO().DisplaySize;
+    ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_Always);
+    ImGui::SetNextWindowSize(display_size, ImGuiCond_Always);
+    ImGui::Begin("##preparing_app", nullptr, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
+    const auto WINDOW_SIZE = ImVec2(764.f * SCALE.x, 440.f * SCALE.y);
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildRounding, 10.f * SCALE.x);
+    ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.f);
+    ImGui::SetNextWindowPos(ImVec2(display_size.x / 2.f, display_size.y / 2.f), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+    ImGui::BeginChild("##preparing_app_child", WINDOW_SIZE, false, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
+    const auto str = !common_dialog.lang.trophy["preparing_start_app"].empty() ? common_dialog.lang.trophy["preparing_start_app"].c_str() : "Preparing to start the application...";
+    ImGui::SetWindowFontScale(1.2f * FONT_SCALE);
+    const auto str_size = ImGui::CalcTextSize(str);
+    const auto STR_POS = ImVec2((WINDOW_SIZE.x / 2.f) - (str_size.x / 2.f), (WINDOW_SIZE.y / 2.f) - (str_size.y / 2.f));
+    ImGui::SetCursorPos(STR_POS);
+    ImGui::TextColored(GUI_COLOR_TEXT, "%s", str);
+    ImGui::EndChild();
+    ImGui::PopStyleVar(2);
+    ImGui::End();
+    //} else {
+    common_dialog.status = SCE_COMMON_DIALOG_STATUS_FINISHED;
+    common_dialog.result = SCE_COMMON_DIALOG_RESULT_OK;
+    //}
 }
 
 static std::string get_save_date_time(GuiState &gui, HostState &host, const SceDateTime &date_time) {

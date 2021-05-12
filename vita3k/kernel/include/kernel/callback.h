@@ -18,6 +18,7 @@
 #pragma once
 
 #include <kernel/types.h>
+
 #include <mutex>
 
 #define SCE_UID_INVALID_UID (SceUID)(0xFFFFFFFF)
@@ -112,6 +113,8 @@ struct Callback {
      * @note This should be called only in the creator thread
     */
     void execute(KernelState &kernel, std::function<void()> deleter);
+
+    uint32_t process_callbacks(KernelState &kernel, SceUID thread_id);
 
 private:
     void reset();

@@ -226,7 +226,8 @@ static IconData load_app_icon(GuiState &gui, HostState &host, const std::string 
 
     const auto APP_INDEX = get_app_index(gui, app_path);
 
-    if (!vfs::read_app_file(buffer, host.pref_path, app_path, "sce_sys/icon0.png")) {
+    const auto device = app_path.find("NPXS10007") != std::string::npos ? VitaIoDevice::pd0 : VitaIoDevice::ux0;
+    if (!vfs::read_file(device, buffer, host.pref_path, "app/" + app_path + "/sce_sys/icon0.png")) {
         buffer = init_default_icon(gui, host);
         if (buffer.empty()) {
             LOG_WARN("Default icon not found for title {}, [{}] in path {}.",
@@ -463,7 +464,8 @@ void init_user_app(GuiState &gui, HostState &host, const std::string &app_path) 
 }
 
 std::map<std::string, ImGui_Texture>::const_iterator get_app_icon(GuiState &gui, const std::string &app_path) {
-    const auto &app_type = app_path.find("NPXS") != std::string::npos ? gui.app_selector.sys_apps_icon : gui.app_selector.user_apps_icon;
+    const auto is_sys = ((app_path.find("NPXS10007") == std::string::npos) && (app_path.find("NPXS") != std::string::npos));
+    const auto &app_type = is_sys ? gui.app_selector.sys_apps_icon : gui.app_selector.user_apps_icon;
     const auto app_icon = std::find_if(app_type.begin(), app_type.end(), [&](const auto &i) {
         return i.first == app_path;
     });
@@ -472,7 +474,8 @@ std::map<std::string, ImGui_Texture>::const_iterator get_app_icon(GuiState &gui,
 }
 
 std::vector<App>::iterator get_app_index(GuiState &gui, const std::string &app_path) {
-    auto &app_type = app_path.find("NPXS") != std::string::npos ? gui.app_selector.sys_apps : gui.app_selector.user_apps;
+    const auto is_sys = ((app_path.find("NPXS10007") == std::string::npos) && (app_path.find("NPXS") != std::string::npos));
+    auto &app_type = is_sys ? gui.app_selector.sys_apps : gui.app_selector.user_apps;
     const auto app_index = std::find_if(app_type.begin(), app_type.end(), [&](const App &a) {
         return a.path == app_path;
     });
@@ -515,7 +518,7 @@ void get_param_info(HostState &host, const vfs::FileBuffer &param) {
 }
 
 void get_user_apps_title(GuiState &gui, HostState &host) {
-    fs::path app_path{ fs::path{ host.pref_path } / "ux0/app" };
+    const fs::path app_path{ fs::path{ host.pref_path } / "ux0/app" };
     if (!fs::exists(app_path))
         return;
 
@@ -527,6 +530,10 @@ void get_user_apps_title(GuiState &gui, HostState &host) {
             get_app_param(gui, host, app_path);
         }
     }
+
+    const fs::path welcome_app_path{ fs::path{ host.pref_path } / "pd0/app/NPXS10007" };
+    if (fs::exists(welcome_app_path) && !fs::is_empty(welcome_app_path))
+        get_app_param(gui, host, "NPXS10007");
 }
 
 void get_sys_apps_title(GuiState &gui, HostState &host) {
