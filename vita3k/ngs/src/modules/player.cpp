@@ -193,7 +193,7 @@ bool Module::process(KernelState &kern, const MemState &mem, const SceUID thread
             }
         }
     }
-
+    
     std::uint32_t gran_to_be_passed = std::min<std::uint32_t>(state->decoded_gran_pending, data.parent->rack->system->granularity);
 
     auto const new_size = 2 * sizeof(float) * (state->decoded_gran_passed + data.parent->rack->system->granularity);
@@ -203,7 +203,11 @@ bool Module::process(KernelState &kern, const MemState &mem, const SceUID thread
     }
     std::uint8_t *data_ptr = data.extra_storage.data();
     data_ptr += 2 * sizeof(float) * state->decoded_gran_passed;
-
+    /*
+    std::ofstream test(fmt::format("test/test0x{:X}", (std::uint64_t)data.parent), std::ios_base::binary | std::ios_base::app);
+    test.write(reinterpret_cast<char *>(data_ptr), data.parent->rack->system->granularity * 2 * 2);
+    test.close();
+    */
     data.parent->products[0].data = data_ptr;
 
     state->decoded_gran_pending = (state->decoded_gran_pending < state->decoded_gran_passed) ? 0 : (state->decoded_gran_pending - gran_to_be_passed);

@@ -90,7 +90,6 @@ void configure_bound_texture(const SceGxmTexture &gxm_texture) {
     glTexParameteri(texture_bind_type, GL_TEXTURE_MIN_FILTER, translate_minmag_filter((SceGxmTextureFilter)gxm_texture.min_filter));
     glTexParameteri(texture_bind_type, GL_TEXTURE_MAG_FILTER, translate_minmag_filter((SceGxmTextureFilter)gxm_texture.mag_filter));
     glTexParameteriv(texture_bind_type, GL_TEXTURE_SWIZZLE_RGBA, swizzle);
-
     const GLenum internal_format = translate_internal_format(base_format);
     auto width = static_cast<uint32_t>(gxm::get_width(&gxm_texture));
     auto height = static_cast<uint32_t>(gxm::get_height(&gxm_texture));

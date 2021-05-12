@@ -23,6 +23,8 @@
 #include <io/device.h>
 #include <io/functions.h>
 #include <io/vfs.h>
+#include <renderer/functions.h>
+#include <renderer/types.h>
 #include <util/log.h>
 #include <util/string_utils.h>
 
@@ -60,7 +62,13 @@ EXPORT(int, sceCommonDialogSetConfigParam) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceCommonDialogUpdate) {
+EXPORT(SceInt32, sceCommonDialogUpdate, const SceCommonDialogUpdateParam *param) {
+    if (param->displaySyncObject) {
+        //LOG_DEBUG("syncObject");
+        //SceGxmSyncObject *sync = param->displaySyncObject.get(host.mem);
+        //renderer::wishlist(sync, (renderer::SyncObjectSubject)(renderer::SyncObjectSubject::DisplayQueue || renderer::SyncObjectSubject::Fragment));    
+    }
+
     return UNIMPLEMENTED();
 }
 
@@ -208,7 +216,7 @@ EXPORT(int, sceMsgDialogInit, const Ptr<SceMsgDialogParam> param) {
     switch (p->mode) {
     case SCE_MSG_DIALOG_MODE_USER_MSG:
         up = p->userMsgParam.get(host.mem);
-        host.common_dialog.msg.message = reinterpret_cast<char *>(up->msg.get(host.mem));
+        host.common_dialog.msg.message = reinterpret_cast<const char *>(up->msg.get(host.mem));
         switch (up->buttonType) {
         case SCE_MSG_DIALOG_BUTTON_TYPE_OK:
             host.common_dialog.msg.btn_num = 1;
@@ -246,6 +254,9 @@ EXPORT(int, sceMsgDialogInit, const Ptr<SceMsgDialogParam> param) {
             host.common_dialog.msg.btn_val[1] = SCE_MSG_DIALOG_BUTTON_ID_NO;
             host.common_dialog.msg.btn[2] = bp->msg3.get(host.mem);
             host.common_dialog.msg.btn_val[2] = SCE_MSG_DIALOG_BUTTON_ID_RETRY;
+            break;
+        default:
+            LOG_ERROR("Attempt to init msg dialog with unknown button mode: {}", up->buttonType);
             break;
         }
         break;
@@ -302,6 +313,18 @@ EXPORT(int, sceMsgDialogInit, const Ptr<SceMsgDialogParam> param) {
         case SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_EMPTY_STORE:
             host.common_dialog.msg.message = "No content is available yet.";
             host.common_dialog.msg.btn_num = 0;
+            break;
+        case SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_PSN_AGE_RESTRICTION:
+            host.common_dialog.msg.message = "You cannot use PlayStation™Network features in this application due to age restrictions.";
+            host.common_dialog.msg.btn[0] = "Ok";
+            host.common_dialog.msg.btn_val[0] = SCE_MSG_DIALOG_BUTTON_ID_OK;
+            host.common_dialog.msg.btn_num = 1;
+            break;
+        case SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_PSN_CHAT_RESTRICTION:
+            host.common_dialog.msg.message = "Use of this application's chat and messaging features is not allowed for your account.";
+            host.common_dialog.msg.btn[0] = "Ok";
+            host.common_dialog.msg.btn_val[0] = SCE_MSG_DIALOG_BUTTON_ID_OK;
+            host.common_dialog.msg.btn_num = 1;
             break;
         case SCE_MSG_DIALOG_SYSMSG_TYPE_INVALID:
         default:
@@ -385,7 +408,7 @@ EXPORT(int, sceMsgDialogProgressBarSetValue, SceMsgDialogProgressBarTarget targe
 
 EXPORT(int, sceMsgDialogTerm) {
     if (host.common_dialog.type != MESSAGE_DIALOG) {
-        return RET_ERROR(SCE_COMMON_DIALOG_ERROR_NOT_SUPPORTED);
+        //return RET_ERROR(SCE_COMMON_DIALOG_ERROR_NOT_SUPPORTED);
     }
     host.common_dialog.status = SCE_COMMON_DIALOG_STATUS_NONE;
     host.common_dialog.type = NO_DIALOG;
@@ -393,6 +416,12 @@ EXPORT(int, sceMsgDialogTerm) {
 }
 
 EXPORT(int, sceNetCheckDialogAbort) {
+    //if (host.common_dialog.type != MESSAGE_DIALOG) {
+    //    return RET_ERROR(SCE_COMMON_DIALOG_ERROR_NOT_SUPPORTED);
+    //}
+    //host.common_dialog.status = SCE_COMMON_DIALOG_STATUS_FINISHED;
+    //host.common_dialog.result = SCE_COMMON_DIALOG_RESULT_ABORTED;
+
     return UNIMPLEMENTED();
 }
 
@@ -400,27 +429,33 @@ EXPORT(int, sceNetCheckDialogGetPS3ConnectInfo) {
     return UNIMPLEMENTED();
 }
 
-typedef struct SceNetCheckDialogResult {
-    SceInt32 result;
-    SceBool psnModeSucceeded;
-    SceUInt8 reserved[124];
-} SceNetCheckDialogResult;
-
 EXPORT(int, sceNetCheckDialogGetResult, SceNetCheckDialogResult *result) {
     result->result = -1;
+    result->psnModeSucceeded = false;
+
     return UNIMPLEMENTED();
 }
 
 EXPORT(SceCommonDialogStatus, sceNetCheckDialogGetStatus) {
     STUBBED("SCE_COMMON_DIALOG_STATUS_FINISHED");
+    //if (host.common_dialog.status == SCE_COMMON_DIALOG_STATUS_RUNNING)
+    //    host.common_dialog.status = SCE_COMMON_DIALOG_STATUS_FINISHED;
+
     return SCE_COMMON_DIALOG_STATUS_FINISHED;
 }
 
 EXPORT(int, sceNetCheckDialogInit) {
+    //    host.common_dialog.status = SCE_COMMON_DIALOG_STATUS_RUNNING;
     return UNIMPLEMENTED();
 }
 
 EXPORT(int, sceNetCheckDialogTerm) {
+    //if (host.common_dialog.type != MESSAGE_DIALOG) {
+    //  return RET_ERROR(SCE_COMMON_DIALOG_ERROR_NOT_SUPPORTED);
+    //}
+    host.common_dialog.status = SCE_COMMON_DIALOG_STATUS_NONE;
+    host.common_dialog.type = NO_DIALOG;
+
     return UNIMPLEMENTED();
 }
 
@@ -850,6 +885,7 @@ EXPORT(int, sceSaveDataDialogContinue, const Ptr<SceSaveDataDialogParam> param) 
         return RET_ERROR(SCE_COMMON_DIALOG_ERROR_NULL);
     }
 
+    host.common_dialog.status = SCE_COMMON_DIALOG_STATUS_RUNNING;
     if (host.common_dialog.status != SCE_COMMON_DIALOG_STATUS_RUNNING) {
         return RET_ERROR(SCE_COMMON_DIALOG_ERROR_NOT_RUNNING);
     }
@@ -878,7 +914,6 @@ EXPORT(int, sceSaveDataDialogContinue, const Ptr<SceSaveDataDialogParam> param) 
     host.common_dialog.savedata.mode = p->mode;
     host.common_dialog.savedata.display_type = p->dispType == 0 ? host.common_dialog.savedata.display_type : p->dispType;
     host.common_dialog.savedata.userdata = p->userdata;
-
     switch (host.common_dialog.savedata.mode) {
     default:
     case SCE_SAVEDATA_DIALOG_MODE_FIXED:
@@ -1007,7 +1042,7 @@ EXPORT(int, sceSaveDataDialogFinish, Ptr<const SceSaveDataDialogFinishParam> fin
     }
 
     if (host.common_dialog.status != SCE_COMMON_DIALOG_STATUS_RUNNING) {
-        return RET_ERROR(SCE_COMMON_DIALOG_ERROR_NOT_RUNNING);
+        //return RET_ERROR(SCE_COMMON_DIALOG_ERROR_NOT_RUNNING);
     }
 
     if (host.common_dialog.substatus != SCE_COMMON_DIALOG_STATUS_FINISHED) {
@@ -1135,7 +1170,7 @@ EXPORT(int, sceSaveDataDialogInit, const Ptr<SceSaveDataDialogParam> param) {
         list_param = p->listParam.get(host.mem);
         host.common_dialog.savedata.slot_list_size = list_param->slotListSize;
         host.common_dialog.savedata.list_style = list_param->itemStyle;
-
+        LOG_DEBUG("slotListSize: {}", list_param->slotListSize);
         slot_param.resize(list_param->slotListSize);
         slot_list.resize(list_param->slotListSize);
         initialize_savedata_vectors(host, list_param->slotListSize);
@@ -1332,6 +1367,10 @@ EXPORT(int, sceVideoImportDialogTerm) {
     return UNIMPLEMENTED();
 }
 
+EXPORT(int, SceCommonDialog_B7D4C911) {
+    return UNIMPLEMENTED();
+}
+
 BRIDGE_IMPL(sceCameraImportDialogAbort)
 BRIDGE_IMPL(sceCameraImportDialogGetResult)
 BRIDGE_IMPL(sceCameraImportDialogGetStatus)
@@ -1451,3 +1490,5 @@ BRIDGE_IMPL(sceVideoImportDialogGetResult)
 BRIDGE_IMPL(sceVideoImportDialogGetStatus)
 BRIDGE_IMPL(sceVideoImportDialogInit)
 BRIDGE_IMPL(sceVideoImportDialogTerm)
+
+BRIDGE_IMPL(SceCommonDialog_B7D4C911)

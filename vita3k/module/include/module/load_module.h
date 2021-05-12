@@ -49,7 +49,7 @@ inline SysmodulePaths init_sysmodule_paths() {
     p[SCE_SYSMODULE_NP_BASIC] = { "np_basic" };
     p[SCE_SYSMODULE_SYSTEM_GESTURE] = { "libsystemgesture" };
     p[SCE_SYSMODULE_LOCATION] = { "liblocation" };
-    p[SCE_SYSMODULE_NP] = { "np_common", "np_manager", "np_basic" };
+    p[SCE_SYSMODULE_NP] = { "np_common", "np_manager" };
     p[SCE_SYSMODULE_PHOTO_EXPORT] = { "libScePhotoExport" };
     p[SCE_SYSMODULE_XML] = { "libSceXml" };
     p[SCE_SYSMODULE_NP_COMMERCE2] = { "np_commerce2" };

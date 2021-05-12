@@ -336,6 +336,7 @@ EXPORT(int, _sceKernelGetThreadContextForVM, SceUID threadId, Ptr<SceKernelThrea
         infoCpu->st = 100000; // Todo
         infoCpu->teehbr = 100000; // Todo
         infoCpu->tpidrurw = read_tpidruro(*thread->cpu);
+        //LOG_DEBUG("cpsr: {}, tpidrurw: {}", infoCpu->cpsr, infoCpu->tpidrurw);
     }
 
     SceKernelThreadVfpRegisterInfo *infoVfp = pVfpRegisterInfo.get(host.mem);
@@ -420,8 +421,10 @@ EXPORT(int, _sceKernelLockMutex, SceUID mutexid, int lock_count, unsigned int *t
     return mutex_lock(host.kernel, host.mem, export_name, thread_id, mutexid, lock_count, timeout, SyncWeight::Heavy);
 }
 
-EXPORT(int, _sceKernelLockMutexCB) {
-    return UNIMPLEMENTED();
+EXPORT(SceInt32, _sceKernelLockMutexCB, SceUID mutexId, SceInt32 lockCount, SceUInt32 *pTimeout) {
+    STUBBED("Try CB");
+    process_callbacks(host.kernel, thread_id);
+    return mutex_lock(host.kernel, host.mem, export_name, thread_id, mutexId, lockCount, pTimeout, SyncWeight::Heavy);
 }
 
 EXPORT(int, _sceKernelLockReadRWLock) {
@@ -484,6 +487,7 @@ EXPORT(int, _sceKernelSetThreadContextForVM, SceUID threadId, Ptr<SceKernelThrea
     const ThreadStatePtr thread = lock_and_find(threadId, host.kernel.threads, host.kernel.mutex);
     if (!thread)
         return RET_ERROR(SCE_KERNEL_ERROR_UNKNOWN_THREAD_ID);
+    LOG_DEBUG("thread id: {}, name: {}", threadId, thread->name);
 
     SceKernelThreadCpuRegisterInfo *infoCpu = pCpuRegisterInfo.get(host.mem);
     if (infoCpu) {
@@ -559,12 +563,14 @@ EXPORT(int, _sceKernelUnlockLwMutex) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, _sceKernelWaitCond) {
-    return UNIMPLEMENTED();
+EXPORT(int, _sceKernelWaitCond, SceUID cond_id, SceUInt32 *timeout) {
+    return condvar_wait(host.kernel, host.mem, export_name, thread_id, cond_id, timeout, SyncWeight::Heavy);
 }
 
-EXPORT(int, _sceKernelWaitCondCB) {
-    return UNIMPLEMENTED();
+EXPORT(SceInt32, _sceKernelWaitCondCB, SceUID condId, SceUInt32 *pTimeout) {
+    STUBBED("Try CB");
+    process_callbacks(host.kernel, thread_id);
+    return condvar_wait(host.kernel, host.mem, export_name, thread_id, condId, pTimeout, SyncWeight::Heavy);
 }
 
 EXPORT(SceInt32, _sceKernelWaitEvent, SceUID eventId, SceUInt32 waitPattern, SceUInt32 *pResultPattern, SceUInt64 *pUserData, SceUInt32 *pTimeout) {
@@ -585,7 +591,8 @@ EXPORT(SceInt32, _sceKernelWaitEventFlag, SceUID evfId, SceUInt32 bitPattern, Sc
 }
 
 EXPORT(SceInt32, _sceKernelWaitEventFlagCB, SceUID evfId, SceUInt32 bitPattern, SceUInt32 waitMode, SceUInt32 *pResultPat, SceUInt32 *pTimeout) {
-    STUBBED("no CB");
+    STUBBED("Try CB");
+    process_callbacks(host.kernel, thread_id);
     return eventflag_wait(host.kernel, export_name, thread_id, evfId, bitPattern, waitMode, pResultPat, pTimeout);
 }
 
@@ -602,9 +609,11 @@ EXPORT(int, _sceKernelWaitLwCond, Ptr<SceKernelLwCondWork> workarea, SceUInt32 *
     return condvar_wait(host.kernel, host.mem, export_name, thread_id, cond_id, timeout, SyncWeight::Light);
 }
 
-EXPORT(int, _sceKernelWaitLwCondCB, Ptr<SceKernelLwCondWork> workarea, SceUInt32 *timeout) {
-    const auto cond_id = workarea.get(host.mem)->uid;
-    return condvar_wait(host.kernel, host.mem, export_name, thread_id, cond_id, timeout, SyncWeight::Light);
+EXPORT(SceInt32, _sceKernelWaitLwCondCB, Ptr<SceKernelLwCondWork> pWork, SceUInt32 *pTimeout) {
+    STUBBED("Try CB");
+    process_callbacks(host.kernel, thread_id);
+    const auto cond_id = pWork.get(host.mem)->uid;
+    return condvar_wait(host.kernel, host.mem, export_name, thread_id, cond_id, pTimeout, SyncWeight::Light);
 }
 
 EXPORT(int, _sceKernelWaitMultipleEvents) {
@@ -620,6 +629,8 @@ EXPORT(SceInt32, _sceKernelWaitSema, SceUID semaId, SceInt32 needCount, SceUInt3
 }
 
 EXPORT(SceInt32, _sceKernelWaitSemaCB, SceUID semaId, SceInt32 needCount, SceUInt32 *pTimeout) {
+    LOG_DEBUG_IF(pTimeout, "timeout: {}", *pTimeout);
+    //LOG_DEBUG("thread id:{}, count: {}", thread_id, needCount);
     process_callbacks(host.kernel, thread_id);
     return semaphore_wait(host.kernel, export_name, thread_id, semaId, needCount, pTimeout);
 }
@@ -633,8 +644,14 @@ EXPORT(int, _sceKernelWaitSignal, uint32_t unknown, uint32_t delay, uint32_t tim
     return SCE_KERNEL_OK;
 }
 
-EXPORT(int, _sceKernelWaitSignalCB) {
-    return UNIMPLEMENTED();
+EXPORT(int, _sceKernelWaitSignalCB, uint32_t unknown, uint32_t delay, uint32_t timeout) {
+    STUBBED("Try CB");
+    process_callbacks(host.kernel, thread_id);
+    const auto thread = lock_and_find(thread_id, host.kernel.threads, host.kernel.mutex);
+    thread->update_status(ThreadStatus::wait);
+    thread->signal.wait();
+    thread->update_status(ThreadStatus::run);
+    return SCE_KERNEL_OK;
 }
 
 int wait_thread_end(ThreadStatePtr &waiter, ThreadStatePtr &target, int *stat) {
@@ -773,6 +790,7 @@ EXPORT(SceUID, sceKernelCreateCallback, char *name, SceUInt32 attr, Ptr<SceKerne
     SceUID cb_uid = host.kernel.get_next_uid();
     host.kernel.callbacks.emplace(cb_uid, cb);
     thread->callbacks.push_back(cb);
+    LOG_DEBUG("Create callbcack: thread id: {}, cb id: {}, name: {}", thread_id, cb_uid, name);
     return cb_uid;
 }
 
@@ -943,7 +961,7 @@ EXPORT(SceInt32, sceKernelNotifyCallback, SceUID callbackId, SceInt32 notifyArg)
     const CallbackPtr cb = lock_and_find(callbackId, host.kernel.callbacks, host.kernel.mutex);
     if (!cb)
         return RET_ERROR(SCE_KERNEL_ERROR_UNKNOWN_CALLBACK_ID);
-
+    LOG_DEBUG("cb id: {}, arg: {}", callbackId, notifyArg);
     cb->direct_notify(notifyArg);
 
     return SCE_KERNEL_OK;

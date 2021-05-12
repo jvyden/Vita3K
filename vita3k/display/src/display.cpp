@@ -20,6 +20,7 @@
 
 #include <chrono>
 #include <util/find.h>
+#include <util/log.h>
 #include <util/lock_and_find.h>
 
 // Code heavily influenced by PPSSSPP's SceDisplay.cpp
@@ -44,7 +45,8 @@ static void vblank_sync_thread(DisplayState &display, KernelState &kernel) {
                             if (cb) {
                                 const auto notif_id = cb->get_notifier_id();
                                 cb->event_notify(notif_id);
-
+                                //LOG_DEBUG("cb, name: {}, notif count: {}", cb->get_name(), cb->get_num_notifications());
+                                
                                 if (display.vblank_wait_infos[i].is_cb) {
                                     std::vector<uint32_t> args = { (uint32_t)notif_id, (uint32_t)cb->get_num_notifications(),
                                         (uint32_t)cb->get_notify_arg(), cb->get_user_common_ptr().address() };

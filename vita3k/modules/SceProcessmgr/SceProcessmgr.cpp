@@ -129,7 +129,7 @@ EXPORT(int, sceKernelGetStdout) {
 }
 
 EXPORT(int, sceKernelIsCDialogAvailable) {
-    return UNIMPLEMENTED();
+    return 1;
 }
 
 EXPORT(int, sceKernelIsGameBudget) {

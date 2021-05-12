@@ -164,7 +164,8 @@ bool find_case_isens_path(IOState &io, VitaIoDevice &device, const fs::path &tra
         final_path = system_path.string().substr(0, system_path.string().find(app_id)) + app_id;
         break;
     }
-    case +VitaIoDevice::addcont0: {
+    case +VitaIoDevice::addcont0:
+    case +VitaIoDevice::addcont1: {
         std::string addcont_id = translated_path.string().substr(0, 18);
         final_path = system_path.string().substr(0, system_path.string().find(addcont_id)) + addcont_id;
         break;
@@ -212,7 +213,8 @@ std::string translate_path(const char *path, VitaIoDevice &device, const IOState
         device = VitaIoDevice::ux0;
         break;
     }
-    case +VitaIoDevice::addcont0: { // Redirect addcont0: to ux0:addcont/<title_id>
+    case +VitaIoDevice::addcont0: // Redirect addcont0: to ux0:addcont/<title_id>
+    case +VitaIoDevice::addcont1: { // Redirect addcont1: to ux0:addcont/<title_id>
         relative_path = device::remove_device_from_path(relative_path, device, device_paths.addcont0);
         device = VitaIoDevice::ux0;
         break;
@@ -237,7 +239,8 @@ std::string translate_path(const char *path, VitaIoDevice &device, const IOState
         break;
     }
     case +VitaIoDevice::tty0:
-    case +VitaIoDevice::tty1: {
+    case +VitaIoDevice::tty1:
+    case +VitaIoDevice::tty2: {
         return std::string{};
     }
     default: {
@@ -266,12 +269,15 @@ std::string expand_path(IOState &io, const char *path, const std::wstring &pref_
 SceUID open_file(IOState &io, const char *path, const int flags, const std::wstring &pref_path, const char *export_name) {
     auto device = device::get_device(path);
     auto device_for_icase = device;
+    auto path_str = std::string(path);
     if (device == VitaIoDevice::_INVALID) {
-        LOG_ERROR("Cannot find device for path: {}", path);
-        return IO_ERROR(SCE_ERROR_ERRNO_ENOENT);
+        device = VitaIoDevice::app0;
+        path_str.insert(0, "app0:");
+        //LOG_ERROR("Cannot find device for path: {}", path);
+        //return IO_ERROR(SCE_ERROR_ERRNO_ENOENT);
     }
 
-    if (device == VitaIoDevice::tty0 || device == VitaIoDevice::tty1) {
+    if (device == VitaIoDevice::tty0 || device == VitaIoDevice::tty1 || device == VitaIoDevice::tty2) {
         assert(flags >= 0);
 
         auto tty_type = TTY_UNKNOWN;
@@ -287,7 +293,7 @@ SceUID open_file(IOState &io, const char *path, const int flags, const std::wstr
         return fd;
     }
 
-    const auto translated_path = translate_path(path, device, io.device_paths);
+    const auto translated_path = translate_path(path_str.c_str(), device, io.device_paths);
     if (translated_path.empty()) {
         LOG_ERROR("Cannot translate path: {}", path);
         return IO_ERROR(SCE_ERROR_ERRNO_ENOENT);
@@ -465,12 +471,15 @@ int stat_file(IOState &io, const char *file, SceIoStat *statp, const std::wstrin
     if (fd == invalid_fd) {
         auto device = device::get_device(file);
         auto device_for_icase = device;
+        auto file_str = std::string(file);
         if (device == VitaIoDevice::_INVALID) {
-            LOG_ERROR("Cannot find device for path: {}", file);
-            return IO_ERROR(SCE_ERROR_ERRNO_ENOENT);
+            device = VitaIoDevice::app0;
+            file_str.insert(0, "app0:");
+            //LOG_ERROR("Cannot find device for path: {}", file);
+            // return IO_ERROR(SCE_ERROR_ERRNO_ENOENT);
         }
 
-        const auto translated_path = translate_path(file, device, io.device_paths);
+        const auto translated_path = translate_path(file_str.c_str(), device, io.device_paths);
         file_path = device::construct_emulated_path(device, translated_path, pref_path, io.redirect_stdio);
 
         if (!fs::exists(file_path)) {
@@ -516,6 +525,7 @@ int stat_file(IOState &io, const char *file, SceIoStat *statp, const std::wstrin
     struct _stati64 sb;
     if (_wstati64(file_path.generic_path().wstring().c_str(), &sb) < 0)
         return IO_ERROR_UNK();
+
 #else
     struct stat64 sb;
     if (stat64(file_path.generic_path().string().c_str(), &sb) < 0)

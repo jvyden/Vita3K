@@ -41,7 +41,8 @@ EXPORT(int, sceSysmoduleIsLoaded, SceSysmoduleModuleId module_id) {
         return SCE_SYSMODULE_LOADED;
 }
 
-EXPORT(int, sceSysmoduleIsLoadedInternal) {
+EXPORT(int, sceSysmoduleIsLoadedInternal, SceSysmoduleInternalModuleId id) {
+    LOG_DEBUG("module id: {}", id);
     return UNIMPLEMENTED();
 }
 

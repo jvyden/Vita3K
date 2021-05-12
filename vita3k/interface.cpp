@@ -556,6 +556,10 @@ static ExitCode load_app_impl(Ptr<const void> &entry_point, HostState &host, con
     std::vector<std::string> lib_load_list = {
         "sys/external/libSceFt2.suprx",
         "sys/external/libpvf.suprx",
+        /*"sys/external/common_gui_dialog.suprx",
+        "sys/external/libcdlg.suprx",
+        "sys/external/libcdlg_savedata.suprx",
+        "sys/external/libcdlg_msg.suprx",*/
     };
 
     if (!is_app) {

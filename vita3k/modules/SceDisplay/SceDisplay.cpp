@@ -19,7 +19,6 @@
 
 #include <display/functions.h>
 #include <host/functions.h>
-#include <util/lock_and_find.h>
 #include <util/types.h>
 
 static int display_wait(HostState &host, SceUID current_thread, const std::int32_t vcount, const bool is_since_setbuf, const bool is_cb) {

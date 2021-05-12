@@ -20,6 +20,7 @@
 #include <host/app_util.h>
 #include <host/functions.h>
 #include <io/functions.h>
+#include <util/safe_time.h>
 
 #include <modules/module_parent.h>
 #include <util/find.h>
@@ -31,7 +32,7 @@ struct SceAppMgrSaveDataDataDelete {
     uint8_t reserved[32];
     Ptr<SceAppUtilSaveDataDataSaveItem> files;
     int fileNum;
-    SceAppUtilMountPoint *mountPoint;
+    SceAppUtilMountPoint mountPoint;
 };
 
 struct SceAppMgrSaveDataData {
@@ -41,8 +42,22 @@ struct SceAppMgrSaveDataData {
     uint8_t reserved[32];
     Ptr<SceAppUtilSaveDataDataSaveItem> files;
     int fileNum;
-    SceAppUtilMountPoint *mountPoint;
+    SceAppUtilMountPoint mountPoint;
     unsigned int *requiredSizeKB;
+};
+
+struct SceAppMgrSaveDataSlot {
+    int size;
+    unsigned int slotId;
+    Ptr<SceAppUtilSaveDataSlotParam> slotParam;
+    uint8_t reserved[116];
+    SceAppUtilMountPoint mountPoint;
+};
+
+struct SceAppMgrSaveDataSlotDelete {
+    int size;
+    unsigned int slotId;
+    SceAppUtilMountPoint mountPoint;
 };
 
 EXPORT(SceInt32, _sceAppMgrGetAppState, SceAppMgrAppState *appState, SceUInt32 sizeofSceAppMgrAppState, SceUInt32 buildVersion) {
@@ -77,8 +92,16 @@ EXPORT(int, sceAppMgrAppMount) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceAppMgrAppParamGetInt) {
-    return UNIMPLEMENTED();
+EXPORT(SceInt32, sceAppMgrAppParamGetInt, SceAppUtilAppParamId paramId, SceInt32 *value) {
+    if (paramId != SCE_APPUTIL_APPPARAM_ID_SKU_FLAG)
+        return RET_ERROR(SCE_APPUTIL_ERROR_PARAMETER);
+
+    if (!value)
+        return RET_ERROR(SCE_APPUTIL_ERROR_NOT_INITIALIZED);
+
+    *value = host.app_sku_flag;
+
+    return 0;
 }
 
 EXPORT(SceInt32, sceAppMgrAppParamGetString, int pid, int param, char *string, int length) {
@@ -448,6 +471,26 @@ EXPORT(int, sceAppMgrSaveDataDataSave, Ptr<SceAppMgrSaveDataData> data) {
             break;
         }
     }
+
+    if (data.get(host.mem)->slotParam) {
+        SceDateTime modified_time;
+        std::time_t time = std::time(0);
+        tm local = {};
+
+        SAFE_LOCALTIME(&time, &local);
+        modified_time.year = local.tm_year + 1900;
+        modified_time.month = local.tm_mon + 1;
+        modified_time.day = local.tm_mday;
+        modified_time.hour = local.tm_hour;
+        modified_time.minute = local.tm_min;
+        modified_time.second = local.tm_sec;
+        modified_time.microsecond = time;
+        data.get(host.mem)->slotParam.get(host.mem)->modifiedTime = modified_time;
+        fd = open_file(host.io, construct_slotparam_path(data.get(host.mem)->slotId).c_str(), SCE_O_WRONLY | SCE_O_CREAT, host.pref_path, export_name);
+        write_file(fd, data.get(host.mem)->slotParam.get(host.mem), sizeof(SceAppUtilSaveDataSlotParam), host.io, export_name);
+        close_file(host.io, fd, export_name);
+    }
+
     return 0;
 }
 
@@ -463,28 +506,62 @@ EXPORT(int, sceAppMgrSaveDataMount) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceAppMgrSaveDataSlotCreate) {
+EXPORT(int, sceAppMgrSaveDataSlotCreate, Ptr<SceAppMgrSaveDataSlot> data) {
+    const auto fd = open_file(host.io, construct_slotparam_path(data.get(host.mem)->slotId).c_str(), SCE_O_WRONLY | SCE_O_CREAT, host.pref_path, export_name);
+    write_file(fd, &data.get(host.mem)->slotParam, sizeof(SceAppUtilSaveDataSlotParam), host.io, export_name);
+    close_file(host.io, fd, export_name);
+
+    return 0;
+}
+
+EXPORT(int, sceAppMgrSaveDataSlotDelete, Ptr<SceAppMgrSaveDataSlotDelete> data) {
+    remove_file(host.io, construct_slotparam_path(data.get(host.mem)->slotId).c_str(), host.pref_path, export_name);
+
+    return 0;
+}
+
+EXPORT(int, sceAppMgrSaveDataSlotFileClose, Ptr<SceAppMgrSaveDataSlot> data) {
+    LOG_DEBUG("FileGetParam, slot id: {}", data.get(host.mem)->slotId);
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceAppMgrSaveDataSlotDelete) {
+EXPORT(int, sceAppMgrSaveDataSlotFileGetParam, Ptr<SceAppMgrSaveDataSlot> data) {
+    LOG_DEBUG("FileGetParam, slot id: {}", data.get(host.mem)->slotId);
+    /*const auto fd = open_file(host.io, construct_slotparam_path(slotId).c_str(), SCE_O_WRONLY | SCE_O_CREAT, host.pref_path, export_name);
+    if (fd < 0)
+        return RET_ERROR(SCE_APPUTIL_ERROR_SAVEDATA_SLOT_NOT_FOUND);
+    write_file(fd, data.get(host.mem)->slotParam.get(host.mem), sizeof(SceAppUtilSaveDataSlotParam), host.io, export_name);
+    close_file(host.io, fd, export_name);*/
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceAppMgrSaveDataSlotFileClose) {
-    return UNIMPLEMENTED();
+struct SceAppMgrSaveDataSlotFile {
+    Ptr<SceAppUtilSaveDataSlotParam> slotParam;
+    SceAppUtilMountPoint mountPoint;
+    unsigned int slotId;
+};
+
+EXPORT(int, sceAppMgrSaveDataSlotFileOpen, Ptr<SceAppMgrSaveDataSlotFile> data) {
+    LOG_DEBUG("FileOpen, slot id: {}", data.get(host.mem)->slotId);
+    LOG_DEBUG("FileOpen, mount point: {}", data.get(host.mem)->mountPoint.data);
+    const auto fd = open_file(host.io, construct_slotparam_path(data.get(host.mem)->slotId).c_str(), SCE_O_RDONLY, host.pref_path, export_name);
+    if (fd < 0)
+        return RET_ERROR(SCE_APPUTIL_ERROR_SAVEDATA_SLOT_NOT_FOUND);
+
+    return 0;
 }
 
-EXPORT(int, sceAppMgrSaveDataSlotFileGetParam) {
-    return UNIMPLEMENTED();
-}
-
-EXPORT(int, sceAppMgrSaveDataSlotFileOpen) {
-    return UNIMPLEMENTED();
-}
-
-EXPORT(int, sceAppMgrSaveDataSlotGetParam) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceAppMgrSaveDataSlotGetParam, Ptr<SceAppMgrSaveDataSlot> data) {
+    LOG_DEBUG("GetParam, slot id: {}", data.get(host.mem)->slotId);
+    /*const auto fd = open_file(host.io, construct_slotparam_path(data.get(host.mem)->slotId).c_str(), SCE_O_RDONLY, host.pref_path, export_name);
+    if (fd < 0)
+        return RET_ERROR(SCE_APPUTIL_ERROR_SAVEDATA_SLOT_NOT_FOUND);
+    
+    read_file(&data.get(host.mem)->slotParam, host.io, fd, sizeof(SceAppUtilSaveDataSlotParam), export_name);
+    close_file(host.io, fd, export_name);
+    data.get(host.mem)->slotParam.get(host.mem)->status = 0;
+    */
+    return 0;
 }
 
 EXPORT(int, sceAppMgrSaveDataSlotGetStatus) {

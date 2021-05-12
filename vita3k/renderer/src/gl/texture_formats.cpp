@@ -97,6 +97,8 @@ static const GLint *translate_swizzle(SceGxmTextureSwizzle1Mode mode) {
         return swizzle_r000;
     case SCE_GXM_TEXTURE_SWIZZLE1_R111:
         return swizzle_r111;
+    default:
+        LOG_ERROR("Translate swizzle unsupported: {}", log_hex(mode));
     }
 
     return swizzle_r;
@@ -116,6 +118,8 @@ static const GLint *translate_swizzle(SceGxmTextureSwizzle2Mode mode) {
         return swizzle_grgr;
     case SCE_GXM_TEXTURE_SWIZZLE2_00RG:
         return swizzle_00rg;
+    default:
+        LOG_ERROR("Translate swizzle mode 2 unsupported: {}", log_hex(mode));
     }
 
     return swizzle_gr;
@@ -127,6 +131,8 @@ static const GLint *translate_swizzle(SceGxmTextureSwizzle2ModeAlt mode) {
         return swizzle_sd;
     case SCE_GXM_TEXTURE_SWIZZLE2_DS:
         return swizzle_ds;
+    default:
+        LOG_ERROR("Translate swizzle 2 mode alt unsupported: {}", log_hex(mode));
     }
 
     return swizzle_sd;
@@ -138,6 +144,8 @@ static const GLint *translate_swizzle(SceGxmTextureSwizzle3Mode mode) {
         return swizzle_bgr;
     case SCE_GXM_TEXTURE_SWIZZLE3_RGB:
         return swizzle_rgb;
+    default:
+        LOG_ERROR("Translate swizzle 3 mode unsupported: {}", log_hex(mode));
     }
 
     return swizzle_bgr;
@@ -161,6 +169,8 @@ static const GLint *translate_swizzle(SceGxmTextureSwizzle4Mode mode) {
         return swizzle_rgb1;
     case SCE_GXM_TEXTURE_SWIZZLE4_BGR1:
         return swizzle_bgr1;
+    default:
+        LOG_ERROR("Translate swizzle 4 mode unsupported: {}", log_hex(mode));
     }
 
     return swizzle_abgr;
@@ -176,6 +186,8 @@ static const GLint *translate_swizzle(SceGxmTextureSwizzleYUV420Mode mode) {
         return swizzle_yuv_csc1;
     case SCE_GXM_TEXTURE_SWIZZLE_YVU_CSC1:
         return swizzle_yvu_csc1;
+    default:
+        LOG_ERROR("Translate swizzle YUV 420 mode unsupported: {}", log_hex(mode));
     }
 
     return swizzle_yuv_csc0;
@@ -199,6 +211,8 @@ static const GLint *translate_swizzle(SceGxmTextureSwizzleYUV422Mode mode) {
         return swizzle_uyvy_csc1;
     case SCE_GXM_TEXTURE_SWIZZLE_VYUY_CSC1:
         return swizzle_vyuy_csc1;
+    default:
+        LOG_ERROR("Translate swizzle YUV 422 mode unsupported: {}", log_hex(mode));
     }
 
     return swizzle_yuyv_csc0;
@@ -206,6 +220,8 @@ static const GLint *translate_swizzle(SceGxmTextureSwizzleYUV422Mode mode) {
 
 GLenum translate_internal_format(SceGxmTextureBaseFormat base_format) {
     switch (base_format) {
+    default:
+        LOG_ERROR("Translate internal format unsupported: {}", log_hex(base_format));
     // 1 Component.
     case SCE_GXM_TEXTURE_BASE_FORMAT_U8:
     case SCE_GXM_TEXTURE_BASE_FORMAT_S8:
@@ -220,6 +236,7 @@ GLenum translate_internal_format(SceGxmTextureBaseFormat base_format) {
 
     // 2 components (red-green.)
     case SCE_GXM_TEXTURE_BASE_FORMAT_U8U8:
+        return GL_RG8;
     case SCE_GXM_TEXTURE_BASE_FORMAT_S8S8:
     case SCE_GXM_TEXTURE_BASE_FORMAT_U16U16:
     case SCE_GXM_TEXTURE_BASE_FORMAT_S16S16:
@@ -236,10 +253,14 @@ GLenum translate_internal_format(SceGxmTextureBaseFormat base_format) {
     case SCE_GXM_TEXTURE_BASE_FORMAT_U5U6U5:
     case SCE_GXM_TEXTURE_BASE_FORMAT_S5S5U6:
     case SCE_GXM_TEXTURE_BASE_FORMAT_X8S8S8U8:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_F11F11F10:
+
     case SCE_GXM_TEXTURE_BASE_FORMAT_U8U8U8:
     case SCE_GXM_TEXTURE_BASE_FORMAT_S8S8S8:
         return GL_RGB;
+
+    case SCE_GXM_TEXTURE_BASE_FORMAT_F11F11F10:
+        LOG_DEBUG("Using F11F11F10");
+        return GL_R11F_G11F_B10F;
 
     case SCE_GXM_TEXTURE_BASE_FORMAT_SE5M9M9M9:
         return GL_RGB16F;
@@ -273,12 +294,17 @@ GLenum translate_internal_format(SceGxmTextureBaseFormat base_format) {
         return GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
 
     case SCE_GXM_TEXTURE_BASE_FORMAT_UBC3:
+    case SCE_GXM_TEXTURE_BASE_FORMAT_UBC4:
+    case SCE_GXM_TEXTURE_BASE_FORMAT_UBC5:
+    case SCE_GXM_TEXTURE_BASE_FORMAT_SBC5:
         return GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
     }
 }
 
 GLenum translate_format(SceGxmTextureBaseFormat base_format) {
     switch (base_format) {
+    default:
+        LOG_ERROR("Translate format unsupported: {}", log_hex(base_format));
     // 1 Component.
     case SCE_GXM_TEXTURE_BASE_FORMAT_U8:
     case SCE_GXM_TEXTURE_BASE_FORMAT_S8:
@@ -346,6 +372,9 @@ GLenum translate_format(SceGxmTextureBaseFormat base_format) {
         return GL_COMPRESSED_RGBA_S3TC_DXT3_EXT;
 
     case SCE_GXM_TEXTURE_BASE_FORMAT_UBC3:
+    case SCE_GXM_TEXTURE_BASE_FORMAT_UBC4:
+    case SCE_GXM_TEXTURE_BASE_FORMAT_UBC5:
+    case SCE_GXM_TEXTURE_BASE_FORMAT_SBC5:
         return GL_COMPRESSED_RGBA_S3TC_DXT5_EXT;
     }
 }
@@ -405,7 +434,7 @@ GLenum translate_type(SceGxmTextureBaseFormat base_format) {
     case SCE_GXM_TEXTURE_BASE_FORMAT_SE5M9M9M9:
         return GL_HALF_FLOAT;
     case SCE_GXM_TEXTURE_BASE_FORMAT_F11F11F10:
-        LOG_WARN("Unhandled base format SCE_GXM_TEXTURE_BASE_FORMAT_F11F11F10");
+        //LOG_WARN("Unhandled base format SCE_GXM_TEXTURE_BASE_FORMAT_F11F11F10");
         return GL_UNSIGNED_INT_10F_11F_11F_REV;
     case SCE_GXM_TEXTURE_BASE_FORMAT_F16F16F16F16:
         return GL_HALF_FLOAT;
@@ -431,6 +460,12 @@ GLenum translate_type(SceGxmTextureBaseFormat base_format) {
         return GL_UNSIGNED_BYTE;
     case SCE_GXM_TEXTURE_BASE_FORMAT_UBC3:
         return GL_UNSIGNED_BYTE;
+    case SCE_GXM_TEXTURE_BASE_FORMAT_UBC4:
+        return GL_UNSIGNED_BYTE;
+    case SCE_GXM_TEXTURE_BASE_FORMAT_UBC5:
+        return GL_UNSIGNED_BYTE;
+    case SCE_GXM_TEXTURE_BASE_FORMAT_SBC5:
+        return GL_BYTE;
     case SCE_GXM_TEXTURE_BASE_FORMAT_YUV420P2:
         return GL_UNSIGNED_BYTE;
     case SCE_GXM_TEXTURE_BASE_FORMAT_YUV420P3:
@@ -448,86 +483,103 @@ GLenum translate_type(SceGxmTextureBaseFormat base_format) {
         return GL_BYTE;
     case SCE_GXM_TEXTURE_BASE_FORMAT_U2F10F10F10:
         return GL_UNSIGNED_INT_2_10_10_10_REV;
+    default:
+        LOG_ERROR("Translate type unsupported: {}", log_hex(base_format));
     }
 
     LOG_WARN("Unhandled base format {}", log_hex(base_format));
     return GL_UNSIGNED_BYTE;
 }
 
+static const GLint u2_rgba[4] = { GL_RED, GL_GREEN, GL_BLUE, GL_ALPHA };
+static const GLint u8u8u8x8_bgr1[4] = { GL_BLUE, GL_GREEN, GL_RED, GL_ONE };
+
 const GLint *translate_swizzle(SceGxmTextureFormat fmt) {
-    const SceGxmTextureBaseFormat base_format = gxm::get_base_format(fmt);
-    const uint32_t swizzle = fmt & SCE_GXM_TEXTURE_SWIZZLE_MASK;
-    switch (base_format) {
-    // 1 Component.
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U8:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_S8:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U16:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_S16:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_F16:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_F32:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_F32M:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U32:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_S32:
-        return translate_swizzle(static_cast<SceGxmTextureSwizzle1Mode>(swizzle));
+    switch (fmt) {
+    case SCE_GXM_TEXTURE_FORMAT_U10U10U10U2_RGBA:
+    case SCE_GXM_TEXTURE_FORMAT_F10F10F10U2_RGBA:
+        return u2_rgba;
+    case SCE_GXM_TEXTURE_FORMAT_U8U8U8X8_BGR1:
+        return u8u8u8x8_bgr1;
+    default:
+        const SceGxmTextureBaseFormat base_format = gxm::get_base_format(fmt);
+        const uint32_t swizzle = fmt & SCE_GXM_TEXTURE_SWIZZLE_MASK;
+        //LOG_DEBUG("base format: {}, swizzle: {}", base_format, swizzle);
+        switch (base_format) {
+        // 1 Component.
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U8:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_S8:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U16:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_S16:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_F16:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_F32:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_F32M:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U32:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_S32:
+            return translate_swizzle(static_cast<SceGxmTextureSwizzle1Mode>(swizzle));
 
-    // 2 components (red-green.)
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U8U8:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_S8S8:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U16U16:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_S16S16:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_F16F16:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_F32F32:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U32U32:
-        return translate_swizzle(static_cast<SceGxmTextureSwizzle2Mode>(swizzle));
+        // 2 components (red-green.)
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U8U8:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_S8S8:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U16U16:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_S16S16:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_F16F16:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_F32F32:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U32U32:
+            return translate_swizzle(static_cast<SceGxmTextureSwizzle2Mode>(swizzle));
 
-    // 2 components (depth-stencil.)
-    case SCE_GXM_TEXTURE_BASE_FORMAT_X8U24:
-        return translate_swizzle(static_cast<SceGxmTextureSwizzle2ModeAlt>(swizzle));
+        // 2 components (depth-stencil.)
+        case SCE_GXM_TEXTURE_BASE_FORMAT_X8U24:
+            return translate_swizzle(static_cast<SceGxmTextureSwizzle2ModeAlt>(swizzle));
 
-    // 3 components.
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U5U6U5:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_S5S5U6:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_X8S8S8U8:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_SE5M9M9M9:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_F11F11F10:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U8U8U8:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_S8S8S8:
-        return translate_swizzle(static_cast<SceGxmTextureSwizzle3Mode>(swizzle));
+        // 3 components.
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U5U6U5:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_S5S5U6:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_X8S8S8U8:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_SE5M9M9M9:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_F11F11F10:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U8U8U8:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_S8S8S8:
+            return translate_swizzle(static_cast<SceGxmTextureSwizzle3Mode>(swizzle));
 
-    // 4 components.
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U4U4U4U4:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U8U3U3U2:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U1U5U5U5:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U8U8U8U8:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_S8S8S8S8:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U2U10U10U10:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_F16F16F16F16:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U16U16U16U16:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_S16S16S16S16:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_PVRT2BPP:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_PVRT4BPP:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_PVRTII2BPP:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_PVRTII4BPP:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_UBC1:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_UBC2:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_UBC3:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_P4:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_P8:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_U2F10F10F10:
-        return translate_swizzle(static_cast<SceGxmTextureSwizzle4Mode>(swizzle));
+        // 4 components.
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U4U4U4U4:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U8U3U3U2:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U1U5U5U5:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U8U8U8U8:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_S8S8S8S8:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U2U10U10U10:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_F16F16F16F16:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U16U16U16U16:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_S16S16S16S16:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_PVRT2BPP:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_PVRT4BPP:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_PVRTII2BPP:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_PVRTII4BPP:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_UBC1:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_UBC2:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_UBC3:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_UBC4:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_UBC5:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_SBC5:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_P4:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_P8:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_U2F10F10F10:
+            return translate_swizzle(static_cast<SceGxmTextureSwizzle4Mode>(swizzle));
 
-    // YUV420.
-    case SCE_GXM_TEXTURE_BASE_FORMAT_YUV420P2:
-    case SCE_GXM_TEXTURE_BASE_FORMAT_YUV420P3:
-        return translate_swizzle(static_cast<SceGxmTextureSwizzleYUV420Mode>(swizzle));
+        // YUV420.
+        case SCE_GXM_TEXTURE_BASE_FORMAT_YUV420P2:
+        case SCE_GXM_TEXTURE_BASE_FORMAT_YUV420P3:
+            return translate_swizzle(static_cast<SceGxmTextureSwizzleYUV420Mode>(swizzle));
 
-    // YUV422.
-    case SCE_GXM_TEXTURE_BASE_FORMAT_YUV422:
-        return translate_swizzle(static_cast<SceGxmTextureSwizzleYUV422Mode>(swizzle));
+        // YUV422.
+        case SCE_GXM_TEXTURE_BASE_FORMAT_YUV422:
+            return translate_swizzle(static_cast<SceGxmTextureSwizzleYUV422Mode>(swizzle));
+        }
+
+        LOG_WARN("Invalid base format {}", log_hex(base_format));
+        return swizzle_abgr;
     }
-
-    LOG_WARN("Invalid base format {}", log_hex(base_format));
-    return swizzle_abgr;
 }
 
 GLenum translate_wrap_mode(SceGxmTextureAddrMode src) {

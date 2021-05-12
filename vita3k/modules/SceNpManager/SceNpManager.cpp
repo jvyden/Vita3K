@@ -20,6 +20,7 @@
 #include <util/lock_and_find.h>
 #include <util/log.h>
 
+#include <np/common.h>
 #include <np/functions.h>
 
 EXPORT(int, sceNpAuthAbortOAuthRequest) {
@@ -39,6 +40,9 @@ EXPORT(int, sceNpAuthGetAuthorizationCode) {
 }
 
 EXPORT(int, sceNpCheckCallback) {
+    if (!host.np.inited)
+        return RET_ERROR(SCE_NP_ERROR_NOT_INITIALIZED);
+
     if (host.np.state == 0)
         return 0;
 
@@ -70,20 +74,31 @@ EXPORT(int, sceNpInit, np::CommunicationConfig *comm_config, void *dontcare) {
     return 0;
 }
 
-EXPORT(int, sceNpManagerGetAccountRegion) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceNpManagerGetAccountRegion, np::SceNpCountryCode *countryCode, int *language) {
+    STUBBED("Stub");
+    *countryCode = np::SceNpCountryCode(host.cfg.sys_lang);
+    *language = host.cfg.sys_lang;
+
+    return 0;
 }
 
 EXPORT(int, sceNpManagerGetCachedParam) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceNpManagerGetChatRestrictionFlag) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceNpManagerGetChatRestrictionFlag, int *isRestricted) {
+    STUBBED("Stub");
+    *isRestricted = 0;
+
+    return 0;
 }
 
-EXPORT(int, sceNpManagerGetContentRatingFlag) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceNpManagerGetContentRatingFlag, int *isRestricted, int *age) {
+    STUBBED("Stub");
+    //*isRestricted = 0;
+    //*age = 25;
+
+    return 0;
 }
 
 EXPORT(int, sceNpManagerGetNpId, np::NpId *id) {

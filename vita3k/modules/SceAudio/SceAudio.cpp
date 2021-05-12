@@ -24,15 +24,6 @@ enum SceAudioOutMode {
     SCE_AUDIO_OUT_MODE_STEREO = 1
 };
 
-enum SceAudioOutPortType {
-    //! Used for main audio output, freq must be set to 48000 Hz
-    SCE_AUDIO_OUT_PORT_TYPE_MAIN = 0,
-    //! Used for Background Music port
-    SCE_AUDIO_OUT_PORT_TYPE_BGM = 1,
-    //! Used for voice chat port
-    SCE_AUDIO_OUT_PORT_TYPE_VOICE = 2
-};
-
 enum SceAudioOutErrorCode {
     SCE_AUDIO_OUT_ERROR_NOT_OPENED = 0x80260001,
     SCE_AUDIO_OUT_ERROR_BUSY = 0x80260002,
@@ -54,8 +45,8 @@ enum SceAudioOutChannelFlag {
     SCE_AUDIO_VOLUME_FLAG_R_CH = 2 //!< Right Channel
 };
 
-EXPORT(int, sceAudioOutGetAdopt) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceAudioOutGetAdopt, SceAudioOutPortType type) {
+    return host.audio.shared.type == type ? 1 : 0;
 }
 
 EXPORT(int, sceAudioOutGetConfig) {
@@ -89,10 +80,21 @@ EXPORT(int, sceAudioOutOpenPort, SceAudioOutPortType type, int len, int freq, Sc
     const AudioOutPortPtr port = std::make_shared<AudioOutPort>();
     port->ro.len_bytes = len * channels * sizeof(int16_t);
     port->shared.stream = stream;
-
     const std::lock_guard<std::mutex> lock(host.audio.shared.mutex);
-    const int port_id = host.audio.shared.next_port_id++;
+
+    const int port_id = host.audio.shared.next_port_id;
     host.audio.shared.out_ports.emplace(port_id, port);
+    host.audio.shared.type = type;
+
+    //find next lowest available port
+    int highest_port_id = host.audio.shared.out_ports.rbegin()->first;
+    for (int i = 1; i < highest_port_id + 1; i++) {
+        if (!host.audio.shared.out_ports.find(i)->second) {
+            host.audio.shared.next_port_id = i;
+            return i;
+        }
+    }
+    host.audio.shared.next_port_id = port_id + 1;
 
     return port_id;
 }
@@ -137,8 +139,12 @@ EXPORT(int, sceAudioOutOpenExtPort) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceAudioOutReleasePort) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceAudioOutReleasePort, int port) {
+    if (host.audio.shared.next_port_id > port) {
+        host.audio.shared.next_port_id = port;
+    }
+    host.audio.shared.out_ports.erase(port);
+    return 0;
 }
 
 EXPORT(int, sceAudioOutSetAdoptMode) {
@@ -157,8 +163,44 @@ EXPORT(int, sceAudioOutSetCompress) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceAudioOutSetConfig) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceAudioOutSetConfig, SceAudioOutPortType type, int len, int freq, SceAudioOutMode mode) {
+    STUBBED("Copy code");
+    if (type < SCE_AUDIO_OUT_PORT_TYPE_MAIN || type > SCE_AUDIO_OUT_PORT_TYPE_VOICE) {
+        return RET_ERROR(SCE_AUDIO_OUT_ERROR_INVALID_PORT_TYPE);
+    }
+    if (type == SCE_AUDIO_OUT_PORT_TYPE_MAIN && freq != 48000) {
+        return RET_ERROR(SCE_AUDIO_OUT_ERROR_INVALID_SAMPLE_FREQ);
+    }
+    if ((mode != SCE_AUDIO_OUT_MODE_MONO) && (mode != SCE_AUDIO_OUT_MODE_STEREO)) {
+        return RET_ERROR(SCE_AUDIO_OUT_ERROR_INVALID_FORMAT);
+    }
+    if (len <= 0) {
+        return RET_ERROR(SCE_AUDIO_OUT_ERROR_INVALID_SIZE);
+    }
+
+    const int channels = (mode == SCE_AUDIO_OUT_MODE_MONO) ? 1 : 2;
+    const AudioStreamPtr stream(SDL_NewAudioStream(AUDIO_S16LSB, channels, freq, host.audio.ro.spec.format, host.audio.ro.spec.channels, host.audio.ro.spec.freq), SDL_FreeAudioStream);
+    if (!stream) {
+        return RET_ERROR(SCE_AUDIO_OUT_ERROR_NOT_OPENED);
+    }
+
+    const AudioOutPortPtr port = std::make_shared<AudioOutPort>();
+    port->ro.len_bytes = len * channels * sizeof(int16_t);
+    port->shared.stream = stream;
+    const std::lock_guard<std::mutex> lock(host.audio.shared.mutex);
+    
+    host.audio.shared.type = type;
+
+    //find next lowest available port
+    int highest_port_id = host.audio.shared.out_ports.rbegin()->first;
+    for (int i = 1; i < highest_port_id + 1; i++) {
+        if (!host.audio.shared.out_ports.find(i)->second) {
+            host.audio.shared.next_port_id = i;
+            break;
+        }
+    }
+
+    return 0;
 }
 
 EXPORT(int, sceAudioOutSetEffectType) {
@@ -172,6 +214,7 @@ EXPORT(int, sceAudioOutSetPortVolume_forUser) {
 EXPORT(int, sceAudioOutSetVolume, int port, SceAudioOutChannelFlag ch, int *vol) {
     if (!ch) //no channel selected, no changes
         return 0;
+    //LOG_DEBUG("port: {}, ch: {}, (vol, L: {}, R: {})", port, ch, vol[0], vol[1]);
 
     const AudioOutPortPtr prt = lock_and_find(port, host.audio.shared.out_ports, host.audio.shared.mutex);
 
@@ -181,6 +224,7 @@ EXPORT(int, sceAudioOutSetVolume, int port, SceAudioOutChannelFlag ch, int *vol)
     const float volume_level = (static_cast<float>(left + right) / static_cast<float>(SCE_AUDIO_VOLUME_0DB * 2));
     const int volume = static_cast<int>(SDL_MIX_MAXVOLUME * volume_level);
 
+    //LOG_DEBUG("volume_level: {}, volume: {}, left: {}, right: {}", volume_level, volume, left, right);
     prt->volume = volume;
     //then update channel volumes in case there was a change
     prt->left_channel_volume = left;

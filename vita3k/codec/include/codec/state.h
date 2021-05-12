@@ -151,6 +151,7 @@ public:
      * @brief Playback rate of the input audio stream without modifications
      */
     float source_frequency;
+    float source_scalar;
 
     /**
      * @brief State of utilization of Sony's HEVAG (High Efficiency VAG) ADPCM.

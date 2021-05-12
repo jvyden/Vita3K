@@ -57,12 +57,14 @@ EXPORT(int, sceHttpCookieImport) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceHttpCreateConnection) {
+EXPORT(SceInt32, sceHttpCreateConnection, SceInt32 tmplId, const char *server, const char *scheme, SceUShort16 port, SceBool enableKeepalive) {
+    LOG_DEBUG("tmplId: {}, server: {}, sheme: {}, port: {}, enable: {}", tmplId, server, scheme, port, enableKeepalive);
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceHttpCreateConnectionWithURL) {
-    return UNIMPLEMENTED();
+EXPORT(SceInt32, sceHttpCreateConnectionWithURL, SceInt32 tmplId, const char *url, SceBool enableKeepalive) {
+    LOG_DEBUG("tmplId: {}, url: {}, enablekeepalive: {}", tmplId, url, enableKeepalive);
+    return -1;
 }
 
 EXPORT(int, sceHttpCreateEpoll) {
@@ -161,7 +163,7 @@ EXPORT(int, sceHttpGetResponseContentLength) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceHttpGetStatusCode) {
+EXPORT(SceInt32, sceHttpGetStatusCode, SceInt32 reqId, SceInt32 *statusCode) {
     return UNIMPLEMENTED();
 }
 

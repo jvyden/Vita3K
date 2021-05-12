@@ -21,7 +21,12 @@ EXPORT(int, sceRegMgrUtilityGetBin) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceRegMgrUtilityGetInt) {
+EXPORT(int, sceRegMgrUtilityGetInt, const int paramid, int *buf) {
+    const auto sys_lang = static_cast<SceSystemParamLang>(host.cfg.sys_lang);
+
+    LOG_DEBUG("category: {}", paramid);
+    *buf = sys_lang;
+
     return UNIMPLEMENTED();
 }
 

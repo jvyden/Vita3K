@@ -50,7 +50,7 @@ EXPORT(int, sceMp4JumpPTS) {
 }
 
 EXPORT(int, sceMp4OpenFile) {
-    STUBBED("Fake Size");
+    STUBBED("Fake Handle");
 
     return 13;
 }
@@ -67,7 +67,9 @@ EXPORT(int, sceMp4Reset) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceMp4StartFileStreaming) {
+EXPORT(SceInt32, sceMp4StartFileStreaming, SceUID player_handle, uint32_t param_2, SceInt64 *result) {
+    *result = 0;
+
     return UNIMPLEMENTED();
 }
 

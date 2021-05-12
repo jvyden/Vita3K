@@ -142,7 +142,6 @@ void sync_viewport_flat(GLContext &context) {
 
     if (previous_flip_y != context.viewport_flip[1]) {
         // We need to sync again state that uses the flip
-        sync_cull(context.record);
         sync_clipping(context);
     }
 }
@@ -312,7 +311,7 @@ void sync_depth_bias(const int factor, const int unit, const bool is_front) {
 void sync_texture(GLState &state, GLContext &context, MemState &mem, std::size_t index, SceGxmTexture texture,
     const Config &config, const std::string &base_path, const std::string &title_id) {
     if (texture.data_addr == 0) {
-        LOG_WARN("Texture has null data.");
+        //SLOG_WARN("Texture has null data.");
         return;
     }
 

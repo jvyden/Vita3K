@@ -17,6 +17,7 @@
 
 #pragma once
 
+#include <gxm/types.h>
 #include <host/app_util.h>
 #include <mem/ptr.h>
 
@@ -181,7 +182,9 @@ enum SceMsgDialogSystemMessageType {
     SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_MIC_DISABLED = 100,
     SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_WIFI_REQUIRED_OPERATION = 101,
     SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_WIFI_REQUIRED_APPLICATION = 102,
-    SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_EMPTY_STORE = 103
+    SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_EMPTY_STORE = 103,
+    SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_PSN_AGE_RESTRICTION = 104,
+    SCE_MSG_DIALOG_SYSMSG_TYPE_TRC_PSN_CHAT_RESTRICTION = 105
 };
 
 enum SceMsgDialogProgressBarTarget {
@@ -408,6 +411,12 @@ struct SceSaveDataDialogSlotInfo {
     SceChar8 reserved[32];
 };
 
+struct SceNetCheckDialogResult {
+    SceInt32 result;
+    SceBool psnModeSucceeded;
+    SceUInt8 reserved[124];
+};
+
 struct SceSaveDataDialogResult {
     SceInt32 mode;
     SceInt32 result;
@@ -416,4 +425,21 @@ struct SceSaveDataDialogResult {
     Ptr<SceSaveDataDialogSlotInfo> slotInfo;
     Ptr<void> userdata;
     SceChar8 reserved[32];
+};
+
+struct SceCommonDialogRenderTargetInfo {
+    ScePVoid colorSurfaceData;
+    SceGxmColorSurfaceType surfaceType;
+    SceGxmColorFormat colorFormat;
+    ScePVoid depthSurfaceData;
+    SceUInt32 width;
+    SceUInt32 height;
+    SceUInt32 strideInPixels;
+    SceUInt8 reserved;
+};
+
+struct SceCommonDialogUpdateParam {
+    SceCommonDialogRenderTargetInfo renderTarget;
+    Ptr<SceGxmSyncObject> displaySyncObject;
+    SceUInt8 reserved;
 };

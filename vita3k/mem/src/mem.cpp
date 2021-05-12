@@ -263,12 +263,13 @@ bool handle_access_violation(MemState &state, uint8_t *addr, bool write) noexcep
         unprotect_inner(state, vaddr, 4);
         LOG_CRITICAL("Unhandled write protected region was valid.");
         return true;
-    }
+    } else
+        LOG_DEBUG("addr: {}, size: {}", it->addr, it->size);
 
     if (vaddr < it->addr || vaddr >= it->addr + it->size) {
         // HACK: keep going
         unprotect_inner(state, vaddr, 4);
-        LOG_CRITICAL("Unhandled write protected region was valid.");
+        LOG_CRITICAL("2: Unhandled write protected region was valid.");
         return true;
     }
 

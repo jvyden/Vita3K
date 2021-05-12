@@ -45,7 +45,7 @@
 #include <utility>
 #include <vector>
 
-static constexpr bool LOG_SHADER_CODE = true;
+static constexpr bool LOG_SHADER_CODE = false;
 static constexpr bool DUMP_SPIRV_BINARIES = false;
 
 using namespace shader::usse;

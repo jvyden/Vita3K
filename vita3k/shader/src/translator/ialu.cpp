@@ -315,8 +315,80 @@ bool USSETranslatorVisitor::i8mad2() {
     return true;
 }
 
-bool USSETranslatorVisitor::i16mad() {
-    LOG_DISASM("Unimplmenet Opcode: i16mad");
+bool USSETranslatorVisitor::i16mad(
+    ShortPredicate pred,
+    Imm1 src0_high,
+    Imm1 nosched,
+    Imm1 src1_high,
+    Imm1 src2_high,
+    bool dest_bank_ext,
+    Imm1 end,
+    bool src1_bank_ext,
+    bool src2_bank_ext,
+    RepeatCount repeat_count,
+    bool is_signed,
+    bool is_sat,
+    Imm2 src2_type,
+    Imm1 src0_bank,
+    Imm2 dest_bank,
+    Imm2 src1_bank,
+    Imm2 src2_bank,
+    Imm7 dest_n,
+    Imm7 src0_n,
+    Imm7 src1_n,
+    Imm7 src2_n) {
+    // TODO: high and low modifier
+    // TODO: more data types for src2
+    Instruction inst;
+    inst.opcode = Opcode::IMAD;
+
+    inst.opr.dest = decode_dest(inst.opr.dest, dest_n, dest_bank, dest_bank_ext, false, 7, m_second_program);
+    inst.opr.src0 = decode_src0(inst.opr.src0, src0_n, src0_bank, false, false, 7, m_second_program);
+    inst.opr.src1 = decode_src12(inst.opr.src1, src1_n, src1_bank, src1_bank_ext, false, 7, m_second_program);
+    inst.opr.src2 = decode_src12(inst.opr.src2, src2_n, src2_bank, src2_bank_ext, false, 7, m_second_program);
+
+    const DataType inst_dt = is_signed ? DataType::INT32 : DataType::UINT32;
+    const DataType inst_dt_16 = is_signed ? DataType::INT16 : DataType::UINT16;
+
+    shader::usse::Imm4 src0_mask = 0b1;
+    shader::usse::Imm4 src1_mask = 0b1;
+    shader::usse::Imm4 src2_mask = 0b1;
+
+    inst.opr.dest.type = inst_dt;
+    inst.opr.src0.type = inst_dt_16;
+    inst.opr.src1.type = inst_dt_16;
+
+    if (src2_type == 2) {
+        inst.opr.src2.type = inst_dt;
+    } else {
+        inst.opr.src2.type = inst_dt_16;
+    }
+
+    if (src0_high) {
+        src0_mask = 0b10;
+    }
+
+    if (src1_high) {
+        src1_mask = 0b10;
+    }
+
+    if (src2_type != 2 && src2_high) {
+        src2_mask = 0b10;
+    }
+
+    spv::Id vsrc0 = load(inst.opr.src0, src0_mask, 0);
+    spv::Id vsrc1 = load(inst.opr.src1, src1_mask, 0);
+    spv::Id vsrc2 = load(inst.opr.src2, src2_mask, 0);
+
+    auto mul_result = m_b.createBinOp(spv::OpIMul, m_b.getTypeId(vsrc0), vsrc0, vsrc1);
+    auto add_result = m_b.createBinOp(spv::OpIAdd, m_b.getTypeId(mul_result), mul_result, vsrc2);
+
+    if (add_result != spv::NoResult) {
+        store(inst.opr.dest, add_result, 0b1, 0);
+    }
+    LOG_DEBUG("i16mad");
+    LOG_DISASM("{:016x}: {}{} {} {} {} {}", m_instr, disasm::s_predicate_str(pred), "IMAD2", disasm::operand_to_str(inst.opr.dest, 0b1),
+        disasm::operand_to_str(inst.opr.src0, 0b1), disasm::operand_to_str(inst.opr.src1, 0b1), disasm::operand_to_str(inst.opr.src2, 0b1));
     return true;
 }
 

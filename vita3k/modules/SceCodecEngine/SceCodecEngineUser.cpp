@@ -37,7 +37,10 @@ EXPORT(int, sceCodecEngineCloseUnmapMemBlock, SceUID uid) {
     return 0;
 }
 
-EXPORT(int, sceCodecEngineFreeMemoryFromUnmapMemBlock) {
+EXPORT(SceInt32, sceCodecEngineFreeMemoryFromUnmapMemBlock, SceUID uid, SceUIntVAddr p) {
+    std::lock_guard<std::mutex>(host.kernel.mutex);
+    host.kernel.codec_blocks.erase(uid);
+    LOG_DEBUG("uid: {}", uid);
     STUBBED("always return success");
     return 0;
 }

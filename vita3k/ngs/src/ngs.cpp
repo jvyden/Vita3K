@@ -370,6 +370,7 @@ bool init_rack(State &ngs, const MemState &mem, System *system, BufferParamsInfo
 }
 
 Ptr<VoiceDefinition> create_voice_definition(State &ngs, MemState &mem, ngs::BussType type) {
+    LOG_DEBUG("type: {}", type);
     switch (type) {
     case ngs::BussType::BUSS_ATRAC9:
         return ngs.alloc_and_init<ngs::atrac9::VoiceDefinition>(mem);
@@ -384,8 +385,19 @@ Ptr<VoiceDefinition> create_voice_definition(State &ngs, MemState &mem, ngs::Bus
     case ngs::BussType::BUSS_SCREAM_ATRAC9:
         return ngs.alloc_and_init<ngs::scream::Atrac9VoiceDefinition>(mem);
     case ngs::BussType::BUSS_SCREAM:
+    //case ngs::BussType::BUSS_REVERB:
+
+    /*case ngs::BussType::BUSS_SIDE_CHAIN_COMPRESSOR:
+    case ngs::BussType::BUSS_REVERB:
+    case ngs::BussType::BUSS_SAS_EMULATION:
+    case ngs::BussType::BUSS_EQUALIZATION:
+    case ngs::BussType::BUSS_COMPRESSOR:
+    case ngs::BussType::BUSS_MIXER:
+    case ngs::BussType::BUSS_DELAY:
+    case ngs::BussType::BUSS_DISTORTION:*/
         return ngs.alloc_and_init<ngs::scream::PlayerVoiceDefinition>(mem);
 
+    case ngs::BussType::BUSS_DISTORTION:
     default:
         LOG_WARN("Missing voice definition for Buss Type {}, using passthrough.", static_cast<uint32_t>(type));
         return ngs.alloc_and_init<ngs::passthrough::VoiceDefinition>(mem);

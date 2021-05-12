@@ -152,21 +152,31 @@ EXPORT(int, sceClibMemsetChk) {
     return UNIMPLEMENTED();
 }
 
+std::mutex lock;
+
 EXPORT(Ptr<void>, sceClibMspaceCalloc, Ptr<void> space, uint32_t elements, uint32_t size) {
+    const std::lock_guard<std::mutex> guard(lock);
+
     void *address = mspace_calloc(space.get(host.mem), elements, size);
     return Ptr<void>(address, host.mem);
 }
 
 EXPORT(Ptr<void>, sceClibMspaceCreate, Ptr<void> base, uint32_t capacity) {
+    const std::lock_guard<std::mutex> guard(lock);
+
     mspace space = create_mspace_with_base(base.get(host.mem), capacity, 0);
     return Ptr<void>(space, host.mem);
 }
 
 EXPORT(uint32_t, sceClibMspaceDestroy, Ptr<void> space) {
+    const std::lock_guard<std::mutex> guard(lock);
+
     return destroy_mspace(space.get(host.mem));
 }
 
 EXPORT(void, sceClibMspaceFree, Ptr<void> space, Ptr<void> address) {
+    const std::lock_guard<std::mutex> guard(lock);
+
     mspace_free(space.get(host.mem), address.get(host.mem));
 }
 
@@ -175,6 +185,8 @@ EXPORT(int, sceClibMspaceIsHeapEmpty) {
 }
 
 EXPORT(Ptr<void>, sceClibMspaceMalloc, Ptr<void> space, uint32_t size) {
+    const std::lock_guard<std::mutex> guard(lock);
+
     void *address = mspace_malloc(space.get(host.mem), size);
     return Ptr<void>(address, host.mem);
 }
@@ -192,11 +204,15 @@ EXPORT(int, sceClibMspaceMallocUsableSize) {
 }
 
 EXPORT(Ptr<void>, sceClibMspaceMemalign, Ptr<void> space, uint32_t alignment, uint32_t size) {
+    const std::lock_guard<std::mutex> guard(lock);
+
     void *address = mspace_memalign(space.get(host.mem), alignment, size);
     return Ptr<void>(address, host.mem);
 }
 
 EXPORT(Ptr<void>, sceClibMspaceRealloc, Ptr<void> space, Ptr<void> address, uint32_t size) {
+    const std::lock_guard<std::mutex> guard(lock);
+
     void *new_address = mspace_realloc(space.get(host.mem), address.get(host.mem), size);
     return Ptr<void>(new_address, host.mem);
 }
@@ -1202,7 +1218,8 @@ EXPORT(int, sceKernelLockLwMutex, Ptr<SceKernelLwMutexWork> workarea, int lock_c
 }
 
 EXPORT(int, sceKernelLockLwMutexCB, Ptr<SceKernelLwMutexWork> workarea, int lock_count, unsigned int *ptimeout) {
-    STUBBED("no CB");
+    STUBBED("Try CB");
+    process_callbacks(host.kernel, thread_id);
     return CALL_EXPORT(_sceKernelLockLwMutex, workarea, lock_count, ptimeout);
 }
 
@@ -1210,9 +1227,8 @@ EXPORT(int, sceKernelLockMutex, SceUID mutexid, int lock_count, unsigned int *ti
     return CALL_EXPORT(_sceKernelLockMutex, mutexid, lock_count, timeout);
 }
 
-EXPORT(int, sceKernelLockMutexCB, SceUID mutexid, int lock_count, unsigned int *timeout) {
-    STUBBED("no CB");
-    return CALL_EXPORT(_sceKernelLockMutex, mutexid, lock_count, timeout);
+EXPORT(SceInt32, sceKernelLockMutexCB, SceUID mutexId, SceInt32 lockCount, SceUInt32 *pTimeout) {
+    return CALL_EXPORT(_sceKernelLockMutexCB, mutexId, lockCount, pTimeout);
 }
 
 EXPORT(int, sceKernelLockReadRWLock) {
@@ -1266,8 +1282,17 @@ EXPORT(int, sceKernelReceiveMsgPipe, SceUID msgpipe_id, char *recv_buf, SceSize 
     return SCE_KERNEL_OK;
 }
 
-EXPORT(int, sceKernelReceiveMsgPipeCB) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceKernelReceiveMsgPipeCB, SceUID msgpipe_id, char *recv_buf, SceSize msg_size, SceUInt32 wait_mode, SceSize *result, SceUInt32 *timeout) {
+    STUBBED("Try CB");
+    process_callbacks(host.kernel, thread_id);
+    const auto ret = msgpipe_recv(host.kernel, export_name, thread_id, msgpipe_id, wait_mode, recv_buf, msg_size, timeout);
+    if (ret < 0) {
+        return ret;
+    }
+    if (result) {
+        *result = ret;
+    }
+    return SCE_KERNEL_OK;
 }
 
 EXPORT(int, sceKernelReceiveMsgPipeVector) {
@@ -1293,8 +1318,17 @@ EXPORT(int, sceKernelSendMsgPipe, SceUID msgpipe_id, char *send_buf, SceSize msg
     return SCE_KERNEL_OK;
 }
 
-EXPORT(int, sceKernelSendMsgPipeCB) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceKernelSendMsgPipeCB, SceUID msgpipe_id, char *send_buf, SceSize msg_size, SceUInt32 wait_mode, SceSize *result, SceUInt32 *timeout) {
+    STUBBED("Try CB");
+    process_callbacks(host.kernel, thread_id);
+    const auto ret = msgpipe_send(host.kernel, export_name, thread_id, msgpipe_id, wait_mode, send_buf, msg_size, timeout);
+    if (ret < 0) {
+        return ret;
+    }
+    if (result) {
+        *result = ret;
+    }
+    return SCE_KERNEL_OK;
 }
 
 EXPORT(int, sceKernelSendMsgPipeVector) {
@@ -1416,9 +1450,8 @@ EXPORT(int, sceKernelWaitCond, SceUID cond_id, SceUInt32 *timeout) {
     return condvar_wait(host.kernel, host.mem, export_name, thread_id, cond_id, timeout, SyncWeight::Heavy);
 }
 
-EXPORT(int, sceKernelWaitCondCB, SceUID cond_id, SceUInt32 *timeout) {
-    STUBBED("no CB");
-    return condvar_wait(host.kernel, host.mem, export_name, thread_id, cond_id, timeout, SyncWeight::Heavy);
+EXPORT(SceInt32, sceKernelWaitCondCB, SceUID condId, SceUInt32 *pTimeout) {
+    return CALL_EXPORT(_sceKernelWaitCondCB, condId, pTimeout);
 }
 
 EXPORT(SceInt32, sceKernelWaitEvent, SceUID eventId, SceUInt32 waitPattern, SceUInt32 *pResultPattern, SceUInt64 *pUserData, SceUInt32 *pTimeout) {
@@ -1437,8 +1470,7 @@ EXPORT(SceInt32, sceKernelWaitEventFlag, SceUID evfId, SceUInt32 bitPattern, Sce
 }
 
 EXPORT(SceInt32, sceKernelWaitEventFlagCB, SceUID evfId, SceUInt32 bitPattern, SceUInt32 waitMode, SceUInt32 *pResultPat, SceUInt32 *pTimeout) {
-    STUBBED("no CB");
-    return eventflag_wait(host.kernel, export_name, thread_id, evfId, bitPattern, waitMode, pResultPat, pTimeout);
+    return CALL_EXPORT(_sceKernelWaitEventFlagCB, evfId, bitPattern, waitMode, pResultPat, pTimeout);
 }
 
 EXPORT(int, sceKernelWaitException) {
@@ -1454,10 +1486,8 @@ EXPORT(int, sceKernelWaitLwCond, Ptr<SceKernelLwCondWork> workarea, SceUInt32 *t
     return condvar_wait(host.kernel, host.mem, export_name, thread_id, cond_id, timeout, SyncWeight::Light);
 }
 
-EXPORT(int, sceKernelWaitLwCondCB, Ptr<SceKernelLwCondWork> workarea, SceUInt32 *timeout) {
-    STUBBED("no CB");
-    const auto cond_id = workarea.get(host.mem)->uid;
-    return condvar_wait(host.kernel, host.mem, export_name, thread_id, cond_id, timeout, SyncWeight::Light);
+EXPORT(SceInt32, sceKernelWaitLwCondCB, Ptr<SceKernelLwCondWork> pWork, SceUInt32 *pTimeout) {
+    return CALL_EXPORT(_sceKernelWaitLwCondCB, pWork, pTimeout);
 }
 
 EXPORT(int, sceKernelWaitMultipleEvents) {
@@ -1480,8 +1510,8 @@ EXPORT(int, sceKernelWaitSignal, uint32_t unknown, uint32_t delay, uint32_t time
     return CALL_EXPORT(_sceKernelWaitSignal, unknown, delay, timeout);
 }
 
-EXPORT(int, sceKernelWaitSignalCB) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceKernelWaitSignalCB, uint32_t unknown, uint32_t delay, uint32_t timeout) {
+    return CALL_EXPORT(_sceKernelWaitSignalCB, unknown, delay, timeout);
 }
 
 EXPORT(int, sceKernelWaitThreadEnd, SceUID thid, int *stat, SceUInt *timeout) {

@@ -126,6 +126,7 @@ public:
     T MemoryRead(Dynarmic::A32::VAddr addr) {
         Ptr<T> ptr{ addr };
         if (!ptr || !ptr.valid(*parent->mem)) {
+            LOG_INFO("pc fail read: 0x{:x}, 0x{:x}", cpu->get_pc(), cpu->get_lr());
             LOG_WARN("Invalid read of uint{}_t at address: 0x{:x}", sizeof(T) * 8, addr);
             return 0;
         }

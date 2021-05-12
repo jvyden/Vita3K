@@ -29,7 +29,7 @@ EXPORT(int, sceNpTrophyAbortHandle) {
 EXPORT(int, sceNpTrophyCreateContext, np::trophy::ContextHandle *context, const np::CommunicationID *comm_id,
     void *comm_sign, const std::uint64_t options) {
     if (!host.np.trophy_state.inited) {
-        return SCE_NP_TROPHY_ERROR_NOT_INITIALIZED;
+        return RET_ERROR(SCE_NP_TROPHY_ERROR_NOT_INITIALIZED);
     }
 
     if (comm_id && comm_id->num > 99) {

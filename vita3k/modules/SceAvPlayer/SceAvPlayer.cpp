@@ -23,6 +23,7 @@
 #include <util/lock_and_find.h>
 #include <util/log.h>
 
+#include <SDL.h>
 #include <algorithm>
 
 // Defines stop/pause behaviour. If true, GetVideo/AudioData will return false when stopped.
@@ -96,6 +97,9 @@ struct PlayerInfoState {
     bool do_loop = false;
     bool paused = false;
 
+    bool autoStart = false;
+    Ptr<const char> defaultLanguage;
+
     uint64_t last_frame_time = 0;
     SceAvPlayerMemoryAllocator memory_allocator;
     SceAvPlayerFileManager file_manager;
@@ -114,10 +118,11 @@ struct SceAvPlayerInfo {
     SceAvPlayerFileManager file_manager;
     SceAvPlayerEventManager event_manager;
     DebugLevel debug_level;
-    uint32_t base_priority;
-    int32_t frame_buffer_count;
-    int32_t auto_start;
-    uint32_t unknown0;
+    uint32_t basePriority;
+    int32_t numOutputVideoFrameBuffers;
+    bool autoStart;
+    uint8_t reserved[3];
+    Ptr<const char> defaultLanguage;
 };
 
 struct SceAvPlayerAudio {
@@ -173,6 +178,11 @@ struct SceAvPlayerStreamInfo {
     SceAvPlayerStreamDetails stream_details;
 };
 
+struct SceAvPlayerPostInitData {
+    uint32_t demuxVideoBufferSize;
+    uint8_t reserved[128];
+};
+
 enum SceAvPlayerErrorCode {
     SCE_AVPLAYER_ERROR_ILLEGAL_ADDR = 0x806a0001,
     SCE_AVPLAYER_ERROR_INVALID_ARGUMENT = 0x806a0002,
@@ -225,12 +235,64 @@ static Ptr<uint8_t> get_buffer(const PlayerPtr &player, MediaType media_type,
     return buffer;
 }
 
+struct ThreadParamsEx {
+    MemState *mem = nullptr;
+    KernelState *kernel = nullptr;
+    ThreadState *thread = nullptr;
+    SceUID thid = 0;
+    Address callback_address = 0;
+    uint wait_time = 0;
+    std::vector<uint32_t> args;
+};
+
+static int SDLCALL thread_callback(void *data) {
+    ThreadParamsEx *params = static_cast<ThreadParamsEx *>(data);
+
+    SDL_Delay(params->wait_time);
+    LOG_DEBUG("Play Video");
+    params->thread->request_callback(params->callback_address, params->args);
+    delete params;
+
+    return 0;
+}
+
+static int run_callback_threaded(HostState &host, ThreadState &thread, const SceUID &thid, Address callback_address, const std::vector<uint32_t> &args) {
+    ThreadParamsEx *params = new ThreadParamsEx;
+    params->mem = &host.mem;
+    params->kernel = &host.kernel;
+    params->thread = &thread;
+    params->thid = thid;
+    params->callback_address = callback_address;
+    params->args = args;
+    params->wait_time = 40;
+
+    SDL_CreateThread(&thread_callback, "AvPlayer callback thread", params);
+    return 0;
+}
+
 void run_event_callback(HostState &host, SceUID thread_id, const PlayerPtr player_info, uint32_t event_id, uint32_t source_id, Ptr<void> event_data) {
     if (player_info->event_manager.event_callback) {
         auto thread = lock_and_find(thread_id, host.kernel.threads, host.kernel.mutex);
-        thread->request_callback(player_info->event_manager.event_callback.address(), { player_info->event_manager.user_data, event_id, source_id, event_data.address() });
+        const std::unique_lock<std::mutex> lock(host.kernel.mutex);
+        if (event_id == SCE_AVPLAYER_STATE_READY)
+            run_callback_threaded(host, *thread, thread_id, player_info->event_manager.event_callback.address(), { player_info->event_manager.user_data, event_id, source_id, event_data.address() });
+        else
+            thread->request_callback(player_info->event_manager.event_callback.address(), { player_info->event_manager.user_data, event_id, source_id, event_data.address() });
     }
 }
+
+static std::vector<std::string> atelier_video_path = {
+    "opening.mp4",
+    "Jpn/worldview_01.mp4",
+    "Jpn/worldview_02.mp4",
+    "Jpn/worldview_03.mp4",
+    "Jpn/worldview_04.mp4",
+    "Jpn/worldview_05.mp4",
+    "Jpn/worldview_06.mp4",
+    "Jpn/worldview_07.mp4",
+};
+
+static uint32_t num_video = 0;
 
 EXPORT(int32_t, sceAvPlayerAddSource, SceUID player_handle, Ptr<const char> path) {
     const auto state = host.kernel.obj_store.get<AvPlayerState>();
@@ -240,7 +302,15 @@ EXPORT(int32_t, sceAvPlayerAddSource, SceUID player_handle, Ptr<const char> path
         return RET_ERROR(SCE_AVPLAYER_ERROR_INVALID_ARGUMENT);
     }
 
-    auto file_path = expand_path(host.io, path.get(host.mem), host.pref_path);
+    LOG_DEBUG("path: {}", path.get(host.mem));
+    auto path_str = std::string(path.get(host.mem));
+    if (path_str.empty()) {
+        player_info->player.queue(expand_path(host.io, ("app0:Res/movie/" + atelier_video_path[num_video]).c_str(), host.pref_path));
+        num_video++;
+    } else if (path_str.find("app0:") == std::string::npos)
+        path_str.insert(0, "app0:");
+
+    auto file_path = expand_path(host.io, path_str.c_str(), host.pref_path);
     if (!fs::exists(file_path) && player_info->file_manager.open_file && player_info->file_manager.close_file && player_info->file_manager.read_file && player_info->file_manager.file_size) {
         const auto cache_path{ fs::path(host.base_path) / "cache" };
         if (!fs::exists(cache_path))
@@ -285,6 +355,7 @@ EXPORT(int32_t, sceAvPlayerAddSource, SceUID player_handle, Ptr<const char> path
 EXPORT(int, sceAvPlayerClose, SceUID player_handle) {
     const auto state = host.kernel.obj_store.get<AvPlayerState>();
     const PlayerPtr &player_info = lock_and_find(player_handle, state->players, state->mutex);
+    LOG_DEBUG("sceAvPlayerClose");
     run_event_callback(host, thread_id, player_info, SCE_AVPLAYER_STATE_STOP, 0, Ptr<void>(0));
     std::lock_guard<std::mutex> lock(state->mutex);
     state->players.erase(player_handle);
@@ -298,13 +369,25 @@ EXPORT(uint64_t, sceAvPlayerCurrentTime, SceUID player_handle) {
     return player_info->player.last_timestamp;
 }
 
-EXPORT(int, sceAvPlayerDisableStream) {
-    return UNIMPLEMENTED();
-}
-
 EXPORT(int32_t, sceAvPlayerStreamCount, SceUID player_handle) {
     STUBBED("ALWAYS RETURN 2 (VIDEO AND AUDIO)");
     return 2;
+}
+
+EXPORT(int32_t, sceAvPlayerDisableStream, SceUID player_handle, uint32_t stream_no) {
+    if (player_handle == 0) {
+        return SCE_AVPLAYER_ERROR_ILLEGAL_ADDR;
+    }
+    if (stream_no > (uint32_t)(CALL_EXPORT(sceAvPlayerStreamCount, player_handle))) {
+        return SCE_AVPLAYER_ERROR_INVALID_ARGUMENT;
+    }
+    const auto state = host.kernel.obj_store.get<AvPlayerState>();
+    const PlayerPtr &player_info = lock_and_find(player_handle, state->players, state->mutex);
+
+    LOG_DEBUG("sceAvPlayerDisableStream, stream no: {}", stream_no);
+    //run_event_callback(host, thread_id, player_info, SCE_AVPLAYER_STATE_STOP, stream_no, Ptr<void>(0));
+
+    return 0;
 }
 
 EXPORT(int32_t, sceAvPlayerEnableStream, SceUID player_handle, uint32_t stream_no) {
@@ -314,7 +397,12 @@ EXPORT(int32_t, sceAvPlayerEnableStream, SceUID player_handle, uint32_t stream_n
     if (stream_no > (uint32_t)(CALL_EXPORT(sceAvPlayerStreamCount, player_handle))) {
         return SCE_AVPLAYER_ERROR_INVALID_ARGUMENT;
     }
-    return UNIMPLEMENTED();
+    const auto state = host.kernel.obj_store.get<AvPlayerState>();
+    const PlayerPtr &player_info = lock_and_find(player_handle, state->players, state->mutex);
+
+    LOG_DEBUG("sceAvPlayerEnableStream, stream no: {}", stream_no);
+
+    return 0;
 }
 
 EXPORT(bool, sceAvPlayerGetAudioData, SceUID player_handle, SceAvPlayerFrameInfo *frame_info) {
@@ -442,10 +530,15 @@ EXPORT(SceUID, sceAvPlayerInit, SceAvPlayerInfo *info) {
         SceUID player_handle = host.kernel.get_next_uid();
         PlayerPtr player = std::make_shared<PlayerInfoState>();
         state->players[player_handle] = player;
+
+        player->autoStart = info->autoStart;
         player->last_frame_time = current_time();
         player->memory_allocator = info->memory_allocator;
         player->file_manager = info->file_manager;
         player->event_manager = info->event_manager;
+        player->defaultLanguage = info->defaultLanguage;
+        LOG_DEBUG("auto start: {}", info->autoStart);
+        LOG_DEBUG_IF(info->autoStart && info->defaultLanguage.get(host.mem), "defaultLanguage:{}", info->defaultLanguage.get(host.mem));
         // Result is defined as a void *, but I just call it SceUID because it is easier to deal with. Same size.
         return player_handle;
     } else {
@@ -495,8 +588,9 @@ EXPORT(int, sceAvPlayerSetLooping, SceUID player_handle, bool do_loop) {
     const auto state = host.kernel.obj_store.get<AvPlayerState>();
     const PlayerPtr &player_info = lock_and_find(player_handle, state->players, state->mutex);
     player_info->do_loop = do_loop;
+    LOG_DEBUG("looping: {}", do_loop);
 
-    return STUBBED("LOOPING NOT IMPLEMENTED");
+    return 0;
 }
 
 EXPORT(int, sceAvPlayerSetTrickSpeed) {
@@ -509,7 +603,9 @@ EXPORT(int, sceAvPlayerStart, SceUID player_handle) {
     if (!player_info->player.videos_queue.empty()) {
         player_info->player.pop_video();
     }
-    run_event_callback(host, thread_id, player_info, SCE_AVPLAYER_STATE_PLAY, 0, Ptr<void>(0));
+    LOG_DEBUG("sceAvPlayerStart");
+    if (!player_info->autoStart)
+        run_event_callback(host, thread_id, player_info, SCE_AVPLAYER_STATE_PLAY, 0, Ptr<void>(0));
     return 0;
 }
 
@@ -517,6 +613,7 @@ EXPORT(int, sceAvPlayerStop, SceUID player_handle) {
     const auto state = host.kernel.obj_store.get<AvPlayerState>();
     const PlayerPtr &player_info = lock_and_find(player_handle, state->players, host.kernel.mutex);
     player_info->player.free_video();
+    LOG_DEBUG("sceAvPlayerStop");
     run_event_callback(host, thread_id, player_info, SCE_AVPLAYER_STATE_STOP, 0, Ptr<void>(0));
     return 0;
 }

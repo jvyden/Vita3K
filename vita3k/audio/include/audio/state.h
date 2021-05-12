@@ -37,6 +37,15 @@ struct ReadOnlyAudioOutPortState {
     int len_bytes = 0;
 };
 
+enum SceAudioOutPortType {
+    //! Used for main audio output, freq must be set to 48000 Hz
+    SCE_AUDIO_OUT_PORT_TYPE_MAIN = 0,
+    //! Used for Background Music port
+    SCE_AUDIO_OUT_PORT_TYPE_BGM = 1,
+    //! Used for voice chat port
+    SCE_AUDIO_OUT_PORT_TYPE_VOICE = 2
+};
+
 struct SharedAudioOutPortState {
     std::mutex mutex;
     AudioStreamPtr stream;
@@ -77,6 +86,7 @@ struct SharedAudioState {
     int next_port_id = 1;
     AudioOutPortPtrs out_ports;
     AudioInPort in_port;
+    SceAudioOutPortType type;
 };
 
 struct AudioState {
