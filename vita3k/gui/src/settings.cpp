@@ -654,24 +654,27 @@ void draw_settings(GuiState &gui, HostState &host) {
         title = is_lang ? lang["date_time"] : "Date & Time";
         ImGui::SetWindowFontScale(1.2f);
         ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.f, 0.5f));
-        if (ImGui::Selectable(is_lang ? lang["date_format"].c_str() : "Date Format", menu == "date_format", ImGuiSelectableFlags_None, ImVec2(0.f, SIZE_SELECT)))
-            menu = "date_format";
+        if (ImGui::Selectable(is_lang ? lang["date_format"].c_str() : "Date Format", menu == "date_format", ImGuiSelectableFlags_None, ImVec2(0.f, SIZE_SELECT))) {
+            if (menu.empty())
+                menu = "date_format";
+            else
+                menu.clear();
+        }
         ImGui::Separator();
-        if (ImGui::Selectable(is_lang ? lang["time_format"].c_str() : "Time Format", menu == "time_format", ImGuiSelectableFlags_None, ImVec2(0.f, SIZE_SELECT)))
-            menu = "time_format";
+        if (ImGui::Selectable(is_lang ? lang["time_format"].c_str() : "Time Format", menu == "time_format", ImGuiSelectableFlags_None, ImVec2(0.f, SIZE_SELECT))) {
+            if (menu.empty())
+                menu = "time_format";
+            else
+                menu.clear();
+        }
         ImGui::Separator();
         ImGui::PopStyleVar();
         if (!menu.empty()) {
             const auto WINDOW_TIME_SIZE = ImVec2(WINDOW_SIZE.x - 70.f * host.dpi_scale, WINDOW_SIZE.y);
-            ImGui::SetNextWindowPos(ImVec2(70.f * SCALE.x, INFORMATION_BAR_HEIGHT), ImGuiCond_Always);
-            ImGui::SetNextWindowSize(WINDOW_TIME_SIZE, ImGuiCond_Always);
-            ImGui::SetNextWindowBgAlpha(0.f);
-            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
-            ImGui::Begin("##time", &gui.live_area.settings, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
             const auto TIME_SELECT_SIZE = 336.f * SCALE.x;
-            ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.f);
             ImGui::SetNextWindowPos(ImVec2(WINDOW_SIZE.x - TIME_SELECT_SIZE, INFORMATION_BAR_HEIGHT), ImGuiCond_Always, ImVec2(0.f, 0.f));
-            ImGui::BeginChild("##time_select", ImVec2(TIME_SELECT_SIZE, WINDOW_SIZE.y), false, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings);
+            ImGui::SetNextWindowSize(ImVec2(TIME_SELECT_SIZE, WINDOW_SIZE.y), ImGuiCond_Always);
+            ImGui::Begin("##time", nullptr, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
             ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.f, 0.5f));
             ImGui::Columns(2, nullptr, false);
             ImGui::SetColumnWidth(0, 30.f * SCALE.x);
@@ -721,12 +724,9 @@ void draw_settings(GuiState &gui, HostState &host) {
             }
             ImGui::Columns(1);
             ImGui::PopStyleVar();
-            ImGui::EndChild();
-            ImGui::PopStyleVar();
-            if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootWindow) && !ImGui::IsAnyItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-                menu.clear();
             ImGui::End();
-            ImGui::PopStyleVar();
+            if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && !ImGui::IsAnyItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                menu.clear();
         }
     } else if (settings_menu == "language") {
         // Language
@@ -739,8 +739,12 @@ void draw_settings(GuiState &gui, HostState &host) {
             const auto sys_lang_str_size = ImGui::CalcTextSize(sys_lang_str).x;
             ImGui::SetColumnWidth(0, sys_lang_str_size + 40.f);
             ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.f, 0.5f));
-            if (ImGui::Selectable(sys_lang_str, false, ImGuiSelectableFlags_SpanAllColumns, ImVec2(0.f, SIZE_SELECT)))
-                popup = "select_sys_lang";
+            if (ImGui::Selectable(sys_lang_str, false, ImGuiSelectableFlags_SpanAllColumns, ImVec2(0.f, SIZE_SELECT))) {
+                if (popup.empty())
+                    popup = "select_sys_lang";
+                else
+                    popup.clear();
+            }
             ImGui::PopStyleVar();
             ImGui::NextColumn();
             ImGui::SetWindowFontScale(0.8f);
@@ -764,15 +768,10 @@ void draw_settings(GuiState &gui, HostState &host) {
             ImGui::Columns(1);
             ImGui::PopStyleVar();
             if (popup == "select_sys_lang") {
-                const auto WINDOW_LANG_LIST_SIZE = ImVec2(WINDOW_SIZE.x - 70.f, WINDOW_SIZE.y);
-                ImGui::SetNextWindowPos(ImVec2(70.f, INFORMATION_BAR_HEIGHT), ImGuiCond_Always);
-                ImGui::SetNextWindowSize(WINDOW_LANG_LIST_SIZE, ImGuiCond_Always);
-                ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.f);
-                ImGui::Begin("##system_language", &gui.live_area.settings, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings);
                 const auto SYS_LANG_SIZE = WINDOW_SIZE.x / 2.f;
-                ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 0.f);
                 ImGui::SetNextWindowPos(ImVec2(WINDOW_SIZE.x - SYS_LANG_SIZE, INFORMATION_BAR_HEIGHT), ImGuiCond_Always, ImVec2(0.f, 0.f));
-                ImGui::BeginChild("##system_language_select", ImVec2(SYS_LANG_SIZE, WINDOW_SIZE.y), false, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings);
+                ImGui::SetNextWindowSize(ImVec2(SYS_LANG_SIZE, WINDOW_SIZE.y), ImGuiCond_Always);
+                ImGui::Begin("##system_language", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoSavedSettings);
                 ImGui::PushStyleVar(ImGuiStyleVar_SelectableTextAlign, ImVec2(0.f, 0.5f));
                 ImGui::Columns(2, nullptr, false);
                 ImGui::SetColumnWidth(0, 30.f * SCALE.x);
@@ -805,12 +804,9 @@ void draw_settings(GuiState &gui, HostState &host) {
                 }
                 ImGui::Columns(1);
                 ImGui::PopStyleVar();
-                ImGui::EndChild();
-                ImGui::PopStyleVar();
-                if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootWindow) && !ImGui::IsAnyItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
-                    popup.clear();
                 ImGui::End();
-                ImGui::PopStyleVar();
+                if (ImGui::IsWindowHovered(ImGuiHoveredFlags_RootAndChildWindows) && !ImGui::IsAnyItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+                    popup.clear();
             }
         } else {
             // Input Languages

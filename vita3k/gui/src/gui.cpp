@@ -48,7 +48,7 @@ static void init_style(HostState &host) {
     ImGuiStyle *style = &ImGui::GetStyle();
 
     style->WindowPadding = ImVec2(11, 11);
-    style->WindowRounding = 4.0f;
+    style->WindowRounding = 0.f;
     style->FramePadding = ImVec2(4, 4);
     style->FrameRounding = 3.0f;
     style->ItemSpacing = ImVec2(10, 5);
@@ -63,7 +63,7 @@ static void init_style(HostState &host) {
 
     style->Colors[ImGuiCol_Text] = ImVec4(0.95f, 0.95f, 0.95f, 1.00f);
     style->Colors[ImGuiCol_TextDisabled] = ImVec4(0.24f, 0.23f, 0.29f, 1.00f);
-    style->Colors[ImGuiCol_WindowBg] = ImVec4(0.07f, 0.08f, 0.10f, 0.80f);
+    style->Colors[ImGuiCol_WindowBg] = ImVec4(0.15f, 0.16f, 0.18f, 1.00f);
     style->Colors[ImGuiCol_ChildBg] = ImVec4(0.15f, 0.16f, 0.18f, 1.00f);
     style->Colors[ImGuiCol_PopupBg] = ImVec4(0.15f, 0.16f, 0.18f, 1.00f);
     style->Colors[ImGuiCol_Border] = ImVec4(0.80f, 0.80f, 0.80f, 0.88f);

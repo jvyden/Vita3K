@@ -32,7 +32,14 @@ using namespace std::string_literals;
 namespace gui {
 
 void init_user_apps(GuiState &gui, HostState &host) {
-    gui.apps_background.clear();
+    if (gui.live_area.settings) {
+        for (const auto &app : gui.apps_list_opened) {
+            if (app != "NPXS10015")
+                gui.apps_background.erase(app);
+        }
+    } else
+        gui.apps_background.clear();
+
     gui.apps_list_opened.clear();
     gui.app_selector.user_apps_icon.clear();
     gui.current_app_selected = -1;
