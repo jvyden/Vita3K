@@ -17,6 +17,13 @@
 
 #pragma once
 
+#ifdef WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN 1
+    #include <Windows.h>
+#endif
+#endif
+
 #include <cpu/common.h>
 #include <kernel/thread/thread_data_queue.h>
 #include <kernel/types.h>
@@ -149,10 +156,15 @@ struct MsgPipeData {
 
 // Unlimited buffer for now
 struct MsgPipe : SyncPrimitive {
+#ifdef WIN32
+    HANDLE ReadHandle;
+    HANDLE WriteHandle;
+#else
     std::mutex recv_mutex;
     WaitingThreadQueuePtr sender_threads;
     WaitingThreadQueuePtr reciever_threads;
     std::list<MsgPipeData> data_buffer;
+#endif
 
     ~MsgPipe() override = default;
 };
