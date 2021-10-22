@@ -23,6 +23,14 @@
 #include <util/lock_and_find.h>
 #include <util/log.h>
 
+//Include Windows.h for anonymous pipes
+#ifdef WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1
+#include <Windows.h>
+#endif
+#endif
+
 static constexpr bool LOG_SYNC_PRIMITIVES = false;
 
 // ***********
@@ -876,6 +884,16 @@ SceUID msgpipe_create(KernelState &kernel, const char *export_name, const char *
     msgpipe->uid = uid;
     std::copy(name, name + KERNELOBJECT_MAX_NAME_LENGTH, msgpipe->name);
 
+#ifdef WIN32
+    //Use native Win32 Anonymous pipes
+    msgpipe->ReadHandle = NULL;
+    msgpipe->WriteHandle = NULL;
+    BOOL bResult = CreatePipe(&msgpipe->ReadHandle, &msgpipe->WriteHandle, NULL, 0);
+    if (!bResult) {
+        LOG_WARN("Failed to CreatePipe: {}", GetLastError());
+        return RET_ERROR(SCE_KERNEL_ERROR_ERROR);
+    }
+#else
     if (msgpipe->attr & SCE_KERNEL_ATTR_TH_PRIO) {
         msgpipe->reciever_threads = std::make_unique<PriorityThreadDataQueue<WaitingThreadData>>();
     } else {
@@ -886,6 +904,7 @@ SceUID msgpipe_create(KernelState &kernel, const char *export_name, const char *
     msgpipe->sender_threads = std::make_unique<FIFOThreadDataQueue<WaitingThreadData>>();
 
     const std::lock_guard<std::mutex> kernel_lock(kernel.mutex);
+#endif
     kernel.msgpipes.emplace(uid, msgpipe);
 
     return uid;
@@ -915,12 +934,28 @@ int msgpipe_recv(KernelState &kernel, const char *export_name, SceUID thread_id,
     }
 
     if (LOG_SYNC_PRIMITIVES) {
+        #ifdef WIN32
+        LOG_DEBUG("{}: uid: {} thread_id: {} name: \"{}\" attr: {} wait_mode: {:#b}", 
+            export_name, msgpipe->uid, thread_id, msgpipe->name, msgpipe->attr, wait_mode);
+        #else
         LOG_DEBUG("{}: uid: {} thread_id: {} name: \"{}\" attr: {} wait_mode: {:#b}"
                   " waiting_threads: {}",
             export_name, msgpipe->uid, thread_id, msgpipe->name, msgpipe->attr, wait_mode,
             msgpipe->reciever_threads->size());
+        #endif
     }
 
+#ifdef WIN32
+    //TODO: add support for waitmode flags
+    //Current behaviour is as if wait_mode = SCE_KERNEL_MSG_PIPE_MODE_FULL | SCE_KERNEL_MSG_PIPE_MODE_WAIT
+    DWORD NumBytesRead = 0;
+    if (!ReadFile(msgpipe->ReadHandle, recv_buf, msg_size, &NumBytesRead, NULL)) {
+        LOG_WARN("Failed to read to message pipe '{}': {}", msgpipe->name, log_hex(GetLastError()));
+        return RET_ERROR(SCE_KERNEL_ERROR_ERROR);
+    } else {
+        return NumBytesRead;
+    }
+#else
     const ThreadStatePtr thread = lock_and_find(thread_id, kernel.threads, kernel.mutex);
 
     size_t read_size = 0;
@@ -1001,6 +1036,7 @@ int msgpipe_recv(KernelState &kernel, const char *export_name, SceUID thread_id,
     }
 
     return read_size;
+#endif
 }
 
 int msgpipe_send(KernelState &kernel, const char *export_name, SceUID thread_id, SceUID msgpipe_id, SceUInt32 wait_mode, char *send_buf, SceSize msg_size, SceUInt32 *timeout) {
@@ -1012,12 +1048,30 @@ int msgpipe_send(KernelState &kernel, const char *export_name, SceUID thread_id,
     }
 
     if (LOG_SYNC_PRIMITIVES) {
+        #ifdef WIN32
+        LOG_DEBUG("{}: uid: {} thread_id: {} name: \"{}\" attr: {} wait_mode: {:#b}",
+            export_name, msgpipe->uid, thread_id, msgpipe->name, msgpipe->attr, wait_mode);
+        #else
         LOG_DEBUG("{}: uid: {} thread_id: {} name: \"{}\" attr: {} wait_mode: {:#b}"
                   " waiting_threads: {}",
             export_name, msgpipe->uid, thread_id, msgpipe->name, msgpipe->attr, wait_mode,
             msgpipe->reciever_threads->size());
+        #endif
     }
 
+#ifdef WIN32
+    //TODO: add support for waitmode flags
+    //Current behaviour is as if wait_mode = SCE_KERNEL_MSG_PIPE_MODE_FULL | SCE_KERNEL_MSG_PIPE_MODE_WAIT
+    DWORD NumBytesWritten = 0;
+    BOOL bRet = WriteFile(msgpipe->WriteHandle, send_buf, msg_size, &NumBytesWritten, NULL);
+    if (!bRet) {
+        LOG_WARN("Failed to write to message pipe '{}': {}", msgpipe->name, log_hex(GetLastError()));
+        return RET_ERROR(SCE_KERNEL_ERROR_ERROR);
+    } else {
+        //LOG_TRACE("Requested to write {} bytes - {} written.", log_hex(msg_size), log_hex(NumBytesWritten));
+        return NumBytesWritten;
+    }
+#else
     const ThreadStatePtr thread = lock_and_find(thread_id, kernel.threads, kernel.mutex);
 
     std::unique_lock<std::mutex> msgpipe_lock(msgpipe->mutex);
@@ -1059,6 +1113,7 @@ int msgpipe_send(KernelState &kernel, const char *export_name, SceUID thread_id,
 
     // TODO this is more than actual size
     return msg_size;
+#endif
 }
 
 SceUID msgpipe_delete(KernelState &kernel, const char *export_name, const char *name, SceUID thread_id, SceUID msgpipe_id) {
@@ -1074,6 +1129,22 @@ SceUID msgpipe_delete(KernelState &kernel, const char *export_name, const char *
             export_name, msgpipe->uid, thread_id, msgpipe->name, msgpipe->attr);
     }
 
+#ifdef WIN32
+    BOOL bResult = CloseHandle(msgpipe->ReadHandle);
+    if (!bResult) {
+        LOG_WARN("Failed to close read handle of message pipe '{}'!", msgpipe->name);
+        return RET_ERROR(SCE_KERNEL_ERROR_ERROR);
+    }
+    msgpipe->ReadHandle = NULL;
+
+    bResult = CloseHandle(msgpipe->WriteHandle);
+    if (!bResult) {
+        LOG_WARN("Failed to close write handle of message pipe '{}'!", msgpipe->name);
+        return RET_ERROR(SCE_KERNEL_ERROR_ERROR);
+    }
+    msgpipe->WriteHandle = NULL;
+    kernel.msgpipes.erase(msgpipe->uid);
+#else
     const std::lock_guard<std::mutex> event_lock(msgpipe->mutex);
 
     if (msgpipe->reciever_threads->empty() && msgpipe->sender_threads->empty()) {
@@ -1083,6 +1154,7 @@ SceUID msgpipe_delete(KernelState &kernel, const char *export_name, const char *
         // TODO:
         LOG_WARN("Can't delete sync object, it has waiting threads.");
     }
+#endif
 
     return SCE_KERNEL_OK;
 }
