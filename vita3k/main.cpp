@@ -290,7 +290,6 @@ int main(int argc, char *argv[]) {
         gui::draw_common_dialog(gui, host);
         draw_app_background(gui, host);
 
-        host.display.condvar.notify_all();
         gui::draw_end(gui, host.window.get());
 
         SDL_SetWindowTitle(host.window.get(), fmt::format("{} | {} ({}) | Please wait, loading...", window_title, host.current_app_title, host.io.title_id).c_str());
@@ -320,7 +319,6 @@ int main(int argc, char *argv[]) {
             gui::draw_ui(gui, host);
         }
 
-        host.display.condvar.notify_all();
         gui::draw_end(gui, host.window.get());
     }
 

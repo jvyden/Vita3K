@@ -17,11 +17,12 @@
 
 #include "SceDisplay.h"
 
+#include <display/functions.h>
 #include <host/functions.h>
+#include <util/types.h>
 
-static int display_wait(HostState &host) {
-    std::unique_lock<std::mutex> lock(host.display.mutex);
-    host.display.condvar.wait(lock);
+static int display_wait(HostState &host, SceUID current_thread, const std::int32_t vcount) {
+    wait_vblank(host.display, host.kernel, current_thread, vcount);
 
     if (host.display.abort.load())
         return SCE_DISPLAY_ERROR_NO_PIXEL_DATA;
@@ -71,7 +72,7 @@ EXPORT(SceInt32, _sceDisplaySetFrameBuf, const SceDisplayFrameBuf *pFrameBuf, Sc
     host.display.pixelformat = pFrameBuf->pixelformat;
     host.display.image_size.x = pFrameBuf->width;
     host.display.image_size.y = pFrameBuf->height;
-    ++host.frame_count;
+    host.frame_count++;
 
     MicroProfileFlip(nullptr);
 
@@ -96,7 +97,7 @@ EXPORT(int, sceDisplayGetRefreshRate, float *pFps) {
 }
 
 EXPORT(int, sceDisplayGetVcount) {
-    return static_cast<int>(host.frame_count);
+    return static_cast<int>(host.display.vblank_count.load());
 }
 
 EXPORT(int, sceDisplayGetVcountInternal) {
@@ -114,49 +115,49 @@ EXPORT(int, sceDisplayUnregisterVblankStartCallback) {
 EXPORT(int, sceDisplayWaitSetFrameBuf) {
     STUBBED("move after setframebuf");
 
-    return display_wait(host);
+    return display_wait(host, thread_id, 1);
 }
 
 EXPORT(int, sceDisplayWaitSetFrameBufCB) {
     STUBBED("move after setframebuf");
 
-    return display_wait(host);
+    return display_wait(host, thread_id, 1);
 }
 
-EXPORT(int, sceDisplayWaitSetFrameBufMulti) {
+EXPORT(int, sceDisplayWaitSetFrameBufMulti, SceUInt vcount) {
     STUBBED("move after setframebuf");
 
-    return display_wait(host);
+    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount));
 }
 
-EXPORT(int, sceDisplayWaitSetFrameBufMultiCB) {
+EXPORT(int, sceDisplayWaitSetFrameBufMultiCB, SceUInt vcount) {
     STUBBED("move after setframebuf");
 
-    return display_wait(host);
+    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount));
 }
 
 EXPORT(int, sceDisplayWaitVblankStart) {
     STUBBED("wait for vblank");
 
-    return display_wait(host);
+    return display_wait(host, thread_id, 1);
 }
 
 EXPORT(int, sceDisplayWaitVblankStartCB) {
     STUBBED("wait for vblank");
 
-    return display_wait(host);
+    return display_wait(host, thread_id, 1);
 }
 
-EXPORT(int, sceDisplayWaitVblankStartMulti) {
+EXPORT(int, sceDisplayWaitVblankStartMulti, SceUInt vcount) {
     STUBBED("wait for vblank");
 
-    return display_wait(host);
+    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount));
 }
 
-EXPORT(int, sceDisplayWaitVblankStartMultiCB) {
+EXPORT(int, sceDisplayWaitVblankStartMultiCB, SceUInt vcount) {
     STUBBED("wait for vblank");
 
-    return display_wait(host);
+    return display_wait(host, thread_id, static_cast<std::int32_t>(vcount));
 }
 
 BRIDGE_IMPL(_sceDisplayGetFrameBuf)
