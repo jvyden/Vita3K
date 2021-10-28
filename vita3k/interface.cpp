@@ -401,6 +401,8 @@ static ExitCode load_app_impl(Ptr<const void> &entry_point, HostState &host, con
     LOG_INFO("at9 audio decoder state: {}", !host.cfg.current_config.disable_at9_decoder);
     LOG_INFO("ngs experimental state: {}", !host.cfg.current_config.disable_ngs);
     LOG_INFO("video player state: {}", host.cfg.current_config.video_playing);
+    LOG_INFO("V-Sync state: {}", host.cfg.current_config.vsync);
+
     refresh_controllers(host.ctrl);
     if (host.ctrl.controllers_num) {
         LOG_INFO("{} Controllers Connected", host.ctrl.controllers_num);

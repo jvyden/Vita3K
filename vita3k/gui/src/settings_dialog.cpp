@@ -33,6 +33,8 @@
 #include <util/log.h>
 #include <util/string_utils.h>
 
+#include <SDL.h>
+
 #include <algorithm>
 #include <nfd.h>
 #include <pugixml.hpp>
@@ -123,6 +125,11 @@ static bool get_custom_config(GuiState &gui, HostState &host, const std::string 
                 config.cpu_opt = cpu_child.attribute("cpu-opt").as_bool();
             }
 
+            // Load GPU Config
+            const auto gpu_child = config_child.child("gpu");
+            if (!gpu_child.empty())
+                config.vsync = gpu_child.attribute("vsync").as_bool();
+
             // Load System Config
             const auto system_child = config_child.child("system");
             if (!system_child.empty())
@@ -158,6 +165,7 @@ void init_config(GuiState &gui, HostState &host, const std::string &app_path) {
         config.lle_driver_user = host.cfg.lle_driver_user;
         config.auto_lle = host.cfg.auto_lle;
         config.lle_modules = host.cfg.lle_modules;
+        config.vsync = host.cfg.vsync;
         config.pstv_mode = host.cfg.pstv_mode;
         config.disable_at9_decoder = host.cfg.disable_at9_decoder;
         config.disable_ngs = host.cfg.disable_ngs;
@@ -197,6 +205,10 @@ static void save_config(GuiState &gui, HostState &host) {
         cpu_child.append_attribute("cpu-backend") = config.cpu_backend.c_str();
         cpu_child.append_attribute("cpu-opt") = config.cpu_opt;
 
+        // GPU
+        auto gpu_child = config_child.append_child("gpu");
+        gpu_child.append_attribute("vsync") = config.vsync;
+
         // System
         auto system_child = config_child.append_child("system");
         system_child.append_attribute("pstv-mode") = config.pstv_mode;
@@ -216,12 +228,23 @@ static void save_config(GuiState &gui, HostState &host) {
         host.cfg.lle_driver_user = config.lle_driver_user;
         host.cfg.auto_lle = config.auto_lle;
         host.cfg.lle_modules = config.lle_modules;
+        host.cfg.vsync = config.vsync;
         host.cfg.pstv_mode = config.pstv_mode;
         host.cfg.disable_at9_decoder = config.disable_at9_decoder;
         host.cfg.disable_ngs = config.disable_ngs;
         host.cfg.video_playing = config.video_playing;
     }
     config::serialize_config(host.cfg, host.cfg.config_path);
+}
+
+static void set_vsync_state(const bool &state) {
+    if (state) {
+        // Try adaptive vsync first, falling back to regular vsync.
+        if (SDL_GL_SetSwapInterval(-1) < 0) {
+            SDL_GL_SetSwapInterval(1);
+        }
+    } else
+        SDL_GL_SetSwapInterval(0);
 }
 
 void set_config(GuiState &gui, HostState &host, const std::string &app_path) {
@@ -231,6 +254,7 @@ void set_config(GuiState &gui, HostState &host, const std::string &app_path) {
         host.cfg.current_config.lle_driver_user = config.lle_driver_user;
         host.cfg.current_config.auto_lle = config.auto_lle;
         host.cfg.current_config.lle_modules = config.lle_modules;
+        host.cfg.current_config.vsync = config.vsync;
         host.cfg.current_config.pstv_mode = config.pstv_mode;
         host.cfg.current_config.disable_at9_decoder = config.disable_at9_decoder;
         host.cfg.current_config.disable_ngs = config.disable_ngs;
@@ -241,11 +265,13 @@ void set_config(GuiState &gui, HostState &host, const std::string &app_path) {
         host.cfg.current_config.lle_driver_user = host.cfg.lle_driver_user;
         host.cfg.current_config.auto_lle = host.cfg.auto_lle;
         host.cfg.current_config.lle_modules = host.cfg.lle_modules;
+        host.cfg.current_config.vsync = host.cfg.vsync;
         host.cfg.current_config.pstv_mode = host.cfg.pstv_mode;
         host.cfg.current_config.disable_at9_decoder = host.cfg.disable_at9_decoder;
         host.cfg.current_config.disable_ngs = host.cfg.disable_ngs;
         host.cfg.current_config.video_playing = host.cfg.video_playing;
     }
+    set_vsync_state(host.cfg.current_config.vsync);
     // No change it if app already running
     if (host.io.title_id.empty()) {
         host.kernel.cpu_backend = set_cpu_backend(host.cfg.current_config.cpu_backend);
@@ -369,6 +395,7 @@ void draw_settings_dialog(GuiState &gui, HostState &host) {
             ImGui::SetTooltip("Select your preferred backend renderer.");
         ImGui::Spacing();
 #endif
+        ImGui::Checkbox("V-Sync", &config.vsync);
         if (host.renderer->features.spirv_shader) {
             ImGui::Checkbox("Use Spir-V shader", &host.cfg.spirv_shader);
 
