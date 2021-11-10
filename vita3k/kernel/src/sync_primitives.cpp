@@ -29,6 +29,22 @@ static constexpr bool LOG_SYNC_PRIMITIVES = false;
 // * Helpers *
 // ***********
 
+uint32_t process_callbacks(KernelState &kernel, SceUID thread_id) {
+    ThreadStatePtr thread = kernel.get_thread(thread_id);
+    uint32_t num_callbacks_processed = 0;
+    for (CallbackPtr &cb : thread->callbacks) {
+        if (cb->is_executable()) {
+            std::string name = cb->get_name();
+            cb->execute(kernel, [name]() {
+                LOG_WARN("Callback with name {} requested to be deleted, but this is not supported yet!", name);
+            });
+            num_callbacks_processed++;
+        }
+    }
+
+    return num_callbacks_processed;
+}
+
 inline int unknown_mutex_id(const char *export_name, SyncWeight weight) {
     if (weight == SyncWeight::Light)
         return RET_ERROR(SCE_KERNEL_ERROR_UNKNOWN_LW_MUTEX_ID);
@@ -382,11 +398,11 @@ SceUID semaphore_create(KernelState &kernel, const char *export_name, const char
     return uid;
 }
 
-int semaphore_wait(KernelState &kernel, const char *export_name, SceUID thread_id, SceUID semaid, SceInt32 signal, SceUInt *timeout) {
+SceInt32 semaphore_wait(KernelState &kernel, const char *export_name, SceUID thread_id, SceUID semaId, SceInt32 needCount, SceUInt32 *pTimeout) {
     assert(semaid >= 0);
 
     // TODO Don't lock twice.
-    const SemaphorePtr semaphore = lock_and_find(semaid, kernel.semaphores, kernel.mutex);
+    const SemaphorePtr semaphore = lock_and_find(semaId, kernel.semaphores, kernel.mutex);
     if (!semaphore) {
         return RET_ERROR(SCE_KERNEL_ERROR_UNKNOWN_SEMA_ID);
     }
@@ -394,28 +410,28 @@ int semaphore_wait(KernelState &kernel, const char *export_name, SceUID thread_i
     if (LOG_SYNC_PRIMITIVES) {
         LOG_DEBUG("{}: uid: {} thread_id: {} name: \"{}\" attr: {} val: {} timeout: {} waiting_threads: {}",
             export_name, semaphore->uid, thread_id, semaphore->name, semaphore->attr, semaphore->val,
-            timeout ? *timeout : 0, semaphore->waiting_threads->size());
+            pTimeout ? *pTimeout : 0, semaphore->waiting_threads->size());
     }
 
     const ThreadStatePtr thread = lock_and_find(thread_id, kernel.threads, kernel.mutex);
 
     std::unique_lock<std::mutex> semaphore_lock(semaphore->mutex);
 
-    if (semaphore->val < signal) {
+    if (semaphore->val < needCount) {
         std::unique_lock<std::mutex> thread_lock(thread->mutex);
         thread->update_status(ThreadStatus::wait, ThreadStatus::run);
 
         WaitingThreadData data;
         data.thread = thread;
         data.priority = thread->priority;
-        data.signal = signal;
+        data.signal = needCount;
 
         semaphore->waiting_threads->push(data);
         semaphore_lock.unlock();
 
-        return handle_timeout(thread, thread_lock, semaphore_lock, semaphore->waiting_threads, data, export_name, timeout);
+        return handle_timeout(thread, thread_lock, semaphore_lock, semaphore->waiting_threads, data, export_name, pTimeout);
     } else {
-        semaphore->val -= signal;
+        semaphore->val -= needCount;
     }
 
     return SCE_KERNEL_OK;
