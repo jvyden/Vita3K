@@ -15,8 +15,8 @@
 // with this program; if not, write to the Free Software Foundation, Inc.,
 // 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 
-#include <kernel/state.h>
 #include <kernel/callback.h>
+#include <kernel/state.h>
 #include <kernel/thread/thread_state.h>
 #include <kernel/types.h>
 #include <mutex>
@@ -63,7 +63,7 @@ uint32_t Callback::get_num_notifications() {
     return this->num_notifications;
 }
 
-void Callback::execute(KernelState& kernel, std::function<void()> deleter) {
+void Callback::execute(KernelState &kernel, std::function<void()> deleter) {
     std::lock_guard lock(this->_mutex);
     if (!this->is_notified())
         return;

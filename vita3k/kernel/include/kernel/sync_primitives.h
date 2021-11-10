@@ -165,6 +165,8 @@ enum class SyncWeight {
     Heavy // 'heavy'weight
 };
 
+uint32_t process_callbacks(KernelState &kernel, SceUID thread_id);
+
 // Mutex
 SceUID mutex_create(SceUID *uid_out, KernelState &kernel, MemState &mem, const char *export_name, const char *name, SceUID thread_id, SceUInt attr, int init_count, Ptr<SceKernelLwMutexWork> workarea, SyncWeight weight);
 int mutex_lock(KernelState &kernel, MemState &mem, const char *export_name, SceUID thread_id, SceUID mutexid, int lock_count, unsigned int *timeout, SyncWeight weight);
@@ -175,7 +177,7 @@ MutexPtr mutex_get(KernelState &kernel, const char *export_name, SceUID thread_i
 
 // Semaphore
 SceUID semaphore_create(KernelState &kernel, const char *export_name, const char *name, SceUID thread_id, SceUInt attr, int initVal, int maxVal);
-int semaphore_wait(KernelState &kernel, const char *export_name, SceUID thread_id, SceUID semaid, SceInt32 signal, SceUInt *timeout);
+SceInt32 semaphore_wait(KernelState &kernel, const char *export_name, SceUID thread_id, SceUID semaId, SceInt32 needCount, SceUInt32 *pTimeout);
 int semaphore_signal(KernelState &kernel, const char *export_name, SceUID thread_id, SceUID semaid, int signal);
 int semaphore_delete(KernelState &kernel, const char *export_name, SceUID thread_id, SceUID semaid);
 
