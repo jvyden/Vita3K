@@ -729,6 +729,8 @@ void draw_ui(GuiState &gui, HostState &host) {
     draw_main_menu_bar(gui, host);
     if (gui.controls_menu.controllers_dialog)
         draw_controllers_dialog(gui, host);
+    if (gui.controls_menu.controls_dialog)
+        draw_controls_dialog(gui, host);
 
     ImGui::PopFont();
 
@@ -761,9 +763,6 @@ void draw_ui(GuiState &gui, HostState &host) {
 
     if (gui.configuration_menu.custom_settings_dialog || gui.configuration_menu.settings_dialog)
         draw_settings_dialog(gui, host);
-
-    if (gui.controls_menu.controls_dialog)
-        draw_controls_dialog(gui, host);
 
     if (gui.help_menu.about_dialog)
         draw_about_dialog(gui, host);
