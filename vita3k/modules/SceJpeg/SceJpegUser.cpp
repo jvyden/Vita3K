@@ -55,8 +55,23 @@ EXPORT(int, sceJpegCsc) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceJpegDecodeMJpeg) {
-    return UNIMPLEMENTED();
+EXPORT(int, sceJpegDecodeMJpeg, const unsigned char *pJpeg, SceSize isize, uint8_t *pRGBA, SceSize osize,
+    int decodeMode, uint8_t *pTempBuffer, SceSize tempBufferSize, void *pCoefBuffer, SceSize coefBufferSize) {
+    const auto state = host.kernel.obj_store.get<MJpegState>();
+
+    DecoderSize size = {};
+
+    // hold yuv for now, really inefficient but i'm hoping it works
+    std::vector<uint8_t> temporary(osize);
+    // ^^ allocates i think an extra frame but i want to be careful here
+
+    state->decoder->send(pJpeg, isize);
+    state->decoder->receive(temporary.data(), &size);
+
+    convert_yuv_to_rgb(temporary.data(), pRGBA, size.width, size.height);
+
+    // Top 16 bits = width, bottom 16 bits = height.
+    return (size.width << 16u) | size.height;
 }
 
 EXPORT(int, sceJpegDecodeMJpegYCbCr, const uint8_t *jpeg_data, uint32_t jpeg_size,
