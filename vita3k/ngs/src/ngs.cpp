@@ -21,6 +21,7 @@
 #include <ngs/definitions/master.h>
 #include <ngs/definitions/passthrough.h>
 #include <ngs/definitions/player.h>
+#include <ngs/definitions/scream.h>
 #include <ngs/definitions/simple.h>
 #include <ngs/modules/atrac9.h>
 #include <ngs/modules/master.h>
@@ -380,6 +381,10 @@ Ptr<VoiceDefinition> create_voice_definition(State &ngs, MemState &mem, ngs::Bus
         return ngs.alloc_and_init<ngs::simple::Atrac9VoiceDefinition>(mem);
     case ngs::BussType::BUSS_SIMPLE:
         return ngs.alloc_and_init<ngs::simple::PlayerVoiceDefinition>(mem);
+    case ngs::BussType::BUSS_SCREAM_ATRAC9:
+        return ngs.alloc_and_init<ngs::scream::Atrac9VoiceDefinition>(mem);
+    case ngs::BussType::BUSS_SCREAM:
+        return ngs.alloc_and_init<ngs::scream::PlayerVoiceDefinition>(mem);
 
     default:
         LOG_WARN("Missing voice definition for Buss Type {}, using passthrough.", static_cast<uint32_t>(type));
