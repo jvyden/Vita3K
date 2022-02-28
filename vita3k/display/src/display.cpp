@@ -20,13 +20,14 @@
 
 #include <chrono>
 #include <util/find.h>
+#include <util/lock_and_find.h>
 
 // Code heavily influenced by PPSSSPP's SceDisplay.cpp
 
 static constexpr int TARGET_FPS = 60;
 static constexpr int TARGET_MS_PER_FRAME = 1000 / TARGET_FPS;
 
-static void vblank_sync_thread(DisplayState &display) {
+static void vblank_sync_thread(DisplayState &display, KernelState &kernel) {
     while (!display.abort.load()) {
         {
             const std::lock_guard<std::mutex> guard(display.mutex);
@@ -37,6 +38,23 @@ static void vblank_sync_thread(DisplayState &display) {
                     target_wait->resume();
                     target_wait->status_cond.notify_all();
 
+                    if (!display.vblank_callbacks_id.empty()) {
+                        {
+                            const CallbackPtr cb = lock_and_find(display.vblank_callbacks_id.front(), kernel.callbacks, kernel.mutex);
+                            if (cb) {
+                                const auto notif_id = cb->get_notifier_id();
+                                cb->event_notify(notif_id);
+
+                                if (display.vblank_wait_infos[i].is_cb) {
+                                    std::vector<uint32_t> args = { (uint32_t)notif_id, (uint32_t)cb->get_num_notifications(),
+                                        (uint32_t)cb->get_notify_arg(), cb->get_user_common_ptr().address() };
+
+                                    kernel.run_guest_function(cb->get_callback_function().address(), args);
+                                }
+                            }
+                        }
+                    }
+
                     display.vblank_wait_infos.erase(display.vblank_wait_infos.begin() + i--);
                 }
             }
@@ -46,9 +64,9 @@ static void vblank_sync_thread(DisplayState &display) {
     }
 }
 
-void wait_vblank(DisplayState &display, KernelState &kernel, const SceUID thread_id, int count, const bool since_last_setbuf) {
+void wait_vblank(DisplayState &display, KernelState &kernel, const SceUID thread_id, int count, const bool since_last_setbuf, const bool is_cb) {
     if (!display.vblank_thread) {
-        display.vblank_thread = std::make_unique<std::thread>(vblank_sync_thread, std::ref(display));
+        display.vblank_thread = std::make_unique<std::thread>(vblank_sync_thread, std::ref(display), std::ref(kernel));
     }
 
     const ThreadStatePtr wait_thread = util::find(thread_id, kernel.threads);
@@ -66,7 +84,7 @@ void wait_vblank(DisplayState &display, KernelState &kernel, const SceUID thread
                 count -= static_cast<int>(blank_passed);
             }
         }
-        display.vblank_wait_infos.push_back({ wait_thread, count });
+        display.vblank_wait_infos.push_back({ wait_thread, count, is_cb });
     }
 
     auto thread_lock = std::unique_lock(wait_thread->mutex);
