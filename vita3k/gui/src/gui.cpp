@@ -574,18 +574,18 @@ std::map<DateTime, std::string> get_date_time(GuiState &gui, HostState &host, co
         const auto month_str = gui.lang.common.ymonth[date_time.tm_mon];
         const auto year = date_time.tm_year + 1900;
         const auto month = date_time.tm_mon + 1;
-        switch (gui.users[host.io.user_id].date_format) {
-        case DateFormat::YYYY_MM_DD:
+        switch (host.cfg.sys_date_fromat) {
+        case SCE_SYSTEM_PARAM_DATE_FORMAT_YYYYMMDD:
             date_time_str[DateTime::DATE_DETAIL] = fmt::format("{} {} ({})", month_str, date_time.tm_mday, day_str);
             date_time_str[DateTime::DATE_MINI] = fmt::format("{}/{}/{}", year, month, date_time.tm_mday);
             break;
-        case DateFormat::DD_MM_YYYY: {
+        case SCE_SYSTEM_PARAM_DATE_FORMAT_DDMMYYYY: {
             const auto small_month_str = gui.lang.common.small_ymonth[date_time.tm_mon];
             date_time_str[DateTime::DATE_DETAIL] = fmt::format("{} {} ({})", date_time.tm_mday, small_month_str, day_str);
             date_time_str[DateTime::DATE_MINI] = fmt::format("{}/{}/{}", date_time.tm_mday, month, year);
             break;
         }
-        case DateFormat::MM_DD_YYYY:
+        case SCE_SYSTEM_PARAM_DATE_FORMAT_MMDDYYYY:
             date_time_str[DateTime::DATE_DETAIL] = fmt::format("{} {} ({})", month_str, date_time.tm_mday, day_str);
             date_time_str[DateTime::DATE_MINI] = fmt::format("{}/{}/{}", month, date_time.tm_mday, year);
             break;

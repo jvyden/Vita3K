@@ -152,16 +152,16 @@ static void draw_trophy_setup_dialog(DialogState &common_dialog, float FONT_SCAL
     //}
 }
 
-static std::string get_save_date_time(GuiState &gui, HostState &host, const SceDateTime &date_time) {
+static std::string get_save_date_time(HostState &host, const SceDateTime &date_time) {
     std::string date_str;
-    switch (gui.users[host.io.user_id].date_format) {
-    case DateFormat::YYYY_MM_DD:
+    switch (host.cfg.sys_date_fromat) {
+    case SCE_SYSTEM_PARAM_DATE_FORMAT_YYYYMMDD:
         date_str = fmt::format("{}/{}/{}", date_time.year, date_time.month, date_time.day);
         break;
-    case DateFormat::DD_MM_YYYY:
+    case SCE_SYSTEM_PARAM_DATE_FORMAT_DDMMYYYY:
         date_str = fmt::format("{}/{}/{}", date_time.day, date_time.month, date_time.year);
         break;
-    case DateFormat::MM_DD_YYYY:
+    case SCE_SYSTEM_PARAM_DATE_FORMAT_MMDDYYYY:
         date_str = fmt::format("{}/{}/{}", date_time.month, date_time.day, date_time.year);
         break;
     default: break;
@@ -204,7 +204,7 @@ static void draw_save_info(GuiState &gui, HostState &host, float FONT_SCALE, ImV
     ImGui::Text("%s", lang["updated"].c_str());
     ImGui::SameLine();
     ImGui::SetCursorPosX(WINDOW_SIZE.x / 2 - 85 * SCALE.x);
-    ImGui::Text("%s", get_save_date_time(gui, host, host.common_dialog.savedata.date[host.common_dialog.savedata.selected_save]).c_str());
+    ImGui::Text("%s", get_save_date_time(host, host.common_dialog.savedata.date[host.common_dialog.savedata.selected_save]).c_str());
     ImGui::Spacing();
     ImGui::Spacing();
     ImGui::Spacing();
@@ -245,7 +245,7 @@ static void draw_savedata_dialog_list(GuiState &gui, HostState &host, float FONT
     case SCE_SAVEDATA_DIALOG_LIST_ITEM_STYLE_TITLE_DATE_SUBTITLE:
         if (host.common_dialog.savedata.has_date[loop_index]) {
             ImGui::SetCursorPos(ImVec2(THUMBNAIL_SIZE.x + 15 * SCALE.x, (save_index * THUMBNAIL_SIZE.y) + 28 * SCALE.y));
-            ImGui::Text("%s", get_save_date_time(gui, host, host.common_dialog.savedata.date[loop_index]).c_str());
+            ImGui::Text("%s", get_save_date_time(host, host.common_dialog.savedata.date[loop_index]).c_str());
         }
         if (!host.common_dialog.savedata.subtitle[loop_index].empty()) {
             ImGui::SetCursorPos(ImVec2(THUMBNAIL_SIZE.x + 15 * SCALE.x, (save_index * THUMBNAIL_SIZE.y) + 50 * SCALE.y));
@@ -259,13 +259,13 @@ static void draw_savedata_dialog_list(GuiState &gui, HostState &host, float FONT
         }
         if (host.common_dialog.savedata.has_date[loop_index]) {
             ImGui::SetCursorPos(ImVec2(THUMBNAIL_SIZE.x + 15 * SCALE.x, (save_index * THUMBNAIL_SIZE.y) + 50 * SCALE.y));
-            ImGui::Text("%s", get_save_date_time(gui, host, host.common_dialog.savedata.date[loop_index]).c_str());
+            ImGui::Text("%s", get_save_date_time(host, host.common_dialog.savedata.date[loop_index]).c_str());
         }
         break;
     case SCE_SAVEDATA_DIALOG_LIST_ITEM_STYLE_TITLE_DATE:
         if (host.common_dialog.savedata.has_date[loop_index]) {
             ImGui::SetCursorPos(ImVec2(THUMBNAIL_SIZE.x + 15 * SCALE.x, (save_index * THUMBNAIL_SIZE.y) + 28 * SCALE.y));
-            ImGui::Text("%s", get_save_date_time(gui, host, host.common_dialog.savedata.date[loop_index]).c_str());
+            ImGui::Text("%s", get_save_date_time(host, host.common_dialog.savedata.date[loop_index]).c_str());
         }
         break;
     }
@@ -377,7 +377,7 @@ static void draw_savedata_dialog(GuiState &gui, HostState &host, float FONT_SCAL
         }
         ImGui::SetWindowFontScale(1.f * FONT_SCALE);
         if (host.common_dialog.savedata.has_date[host.common_dialog.savedata.selected_save]) {
-            ImGui::Text("%s", get_save_date_time(gui, host, host.common_dialog.savedata.date[host.common_dialog.savedata.selected_save]).c_str());
+            ImGui::Text("%s", get_save_date_time(host, host.common_dialog.savedata.date[host.common_dialog.savedata.selected_save]).c_str());
         }
         if (!host.common_dialog.savedata.subtitle.empty()) {
             ImGui::Text("%s", host.common_dialog.savedata.subtitle[host.common_dialog.savedata.selected_save].c_str());

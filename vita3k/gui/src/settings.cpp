@@ -685,13 +685,13 @@ void draw_settings(GuiState &gui, HostState &host) {
             ImGui::SetColumnWidth(0, 30.f * SCALE.x);
             ImGui::SetWindowFontScale(1.6f * RES_SCALE.x);
             if (menu == "date_format") {
-                const auto get_date_format_sting = [&](DateFormat date_format) {
+                const auto get_date_format_sting = [&](SceSystemParamDateFormat date_format) {
                     std::string date_format_str;
                     auto lang = gui.lang.settings.date_time.date_format;
                     switch (date_format) {
-                    case YYYY_MM_DD: date_format_str = lang["yyyy_mm_dd"]; break;
-                    case DD_MM_YYYY: date_format_str = lang["dd_mm_yyyy"]; break;
-                    case MM_DD_YYYY: date_format_str = lang["mm_dd_yyyy"]; break;
+                    case SCE_SYSTEM_PARAM_DATE_FORMAT_YYYYMMDD: date_format_str = lang["yyyy_mm_dd"]; break;
+                    case SCE_SYSTEM_PARAM_DATE_FORMAT_DDMMYYYY: date_format_str = lang["dd_mm_yyyy"]; break;
+                    case SCE_SYSTEM_PARAM_DATE_FORMAT_MMDDYYYY: date_format_str = lang["mm_dd_yyyy"]; break;
                     default: break;
                     }
 
@@ -699,14 +699,14 @@ void draw_settings(GuiState &gui, HostState &host) {
                 };
 
                 for (auto f = 0; f < 3; f++) {
-                    auto date_format_value = DateFormat(f);
+                    auto date_format_value = SceSystemParamDateFormat(f);
                     const auto date_format_str = get_date_format_sting(date_format_value);
                     ImGui::PushID(date_format_str.c_str());
                     ImGui::SetCursorPosY((display_size.y / 2.f) - INFORMATION_BAR_HEIGHT - (SIZE_PUPUP_SELECT * 1.5f) + (SIZE_PUPUP_SELECT * f));
-                    if (ImGui::Selectable(gui.users[host.io.user_id].date_format == date_format_value ? "V" : "##date_format", false, ImGuiSelectableFlags_SpanAllColumns, ImVec2(TIME_SELECT_SIZE, SIZE_PUPUP_SELECT))) {
-                        if (gui.users[host.io.user_id].date_format != date_format_value) {
-                            gui.users[host.io.user_id].date_format = date_format_value;
-                            save_user(gui, host, host.io.user_id);
+                    if (ImGui::Selectable(host.cfg.sys_date_fromat == date_format_value ? "V" : "##date_format", false, ImGuiSelectableFlags_SpanAllColumns, ImVec2(TIME_SELECT_SIZE, SIZE_PUPUP_SELECT))) {
+                        if (host.cfg.sys_date_fromat != date_format_value) {
+                            host.cfg.sys_date_fromat = date_format_value;
+                            config::serialize_config(host.cfg, host.base_path);
                         }
                         menu.clear();
                     }

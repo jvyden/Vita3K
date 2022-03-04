@@ -385,7 +385,7 @@ Ptr<VoiceDefinition> create_voice_definition(State &ngs, MemState &mem, ngs::Bus
     case ngs::BussType::BUSS_SCREAM_ATRAC9:
         return ngs.alloc_and_init<ngs::scream::Atrac9VoiceDefinition>(mem);
     case ngs::BussType::BUSS_SCREAM:
-    //case ngs::BussType::BUSS_REVERB:
+    case ngs::BussType::BUSS_REVERB:
 
     /*case ngs::BussType::BUSS_SIDE_CHAIN_COMPRESSOR:
     case ngs::BussType::BUSS_REVERB:

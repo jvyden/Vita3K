@@ -358,9 +358,10 @@ EXPORT(int, sceAppUtilStoreBrowse) {
     return UNIMPLEMENTED();
 }
 
-EXPORT(int, sceAppUtilSystemParamGetInt, unsigned int paramId, int *value) {
+EXPORT(int, sceAppUtilSystemParamGetInt, SceSystemParamId paramId, SceInt32 *value) {
     const auto sys_lang = static_cast<SceSystemParamLang>(host.cfg.sys_lang);
     const auto sys_button = static_cast<SceSystemParamEnterButtonAssign>(host.cfg.sys_button);
+    const auto sys_date_format = static_cast<SceSystemParamDateFormat>(host.cfg.sys_date_fromat);
 
     switch (paramId) {
     case SCE_SYSTEM_PARAM_ID_LANG:
@@ -369,7 +370,11 @@ EXPORT(int, sceAppUtilSystemParamGetInt, unsigned int paramId, int *value) {
     case SCE_SYSTEM_PARAM_ID_ENTER_BUTTON:
         *value = sys_button;
         return 0;
+    case SCE_SYSTEM_PARAM_ID_DATE_FORMAT:
+        *value = sys_date_format;
+        return 0;
     default:
+        LOG_ERROR("missing param: {}", paramId);
         return RET_ERROR(SCE_APPUTIL_ERROR_PARAMETER);
     }
 }

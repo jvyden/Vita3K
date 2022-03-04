@@ -108,9 +108,9 @@ EXPORT(int, _sceIoPread, const SceUID fd, void *data, const SceSize size, const 
     if (pos < 0)
         return static_cast<int>(pos);
 
-    seek_file(fd, static_cast<int>(offset), SCE_SEEK_SET, host.io, export_name);
+    seek_file(fd, offset, SCE_SEEK_SET, host.io, export_name);
     const int res = read_file(data, host.io, fd, size, export_name);
-    seek_file(fd, static_cast<int>(pos), SCE_SEEK_SET, host.io, export_name);
+    seek_file(fd, pos, SCE_SEEK_SET, host.io, export_name);
     return res;
 }
 
